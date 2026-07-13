@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"description": "Standalone dynamic Ecwid shop teaser block for WordPress.",
-	"author": "RAN",
+	"author": "bnjmnrsh",
 	"license": "GPL-2.0-or-later",
 	"keywords": [
 		"wordpress",
@@ -17,7 +17,7 @@
 		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser.git"
 	},
 	"bugs": {
-		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/issues"
+		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser"
 	},
 	"devDependencies": {
 		"@wordpress/scripts": "^30.25.0",
