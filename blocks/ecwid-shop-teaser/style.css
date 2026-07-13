@@ -31,6 +31,12 @@
 	text-align: var(--ran-ecwid-shop-teaser--text-align, center);
 }
 
+.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__link {
+	color: inherit;
+	display: block;
+	text-decoration: none;
+}
+
 .ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__media {
 	border-radius: var(--ran-ecwid-shop-teaser--image-border-radius, 0);
 	display: block;
@@ -50,7 +56,7 @@
 }
 
 .ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__title {
-	color: var(--ran-ecwid-shop-teaser--description-color, inherit);
+	color: var(--ran-ecwid-shop-teaser--title-color, inherit);
 	display: block;
 	font-size: var(
 		--ran-ecwid-shop-teaser--title-font-size,
@@ -66,13 +72,8 @@
 	);
 }
 
-.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__title a {
-	color: inherit;
-	text-decoration: inherit;
-}
-
-.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__title a:hover,
-.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__title a:focus-visible {
+.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__link:hover .ran-ecwid-shop-teaser-card__title,
+.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__link:focus-visible .ran-ecwid-shop-teaser-card__title {
 	text-decoration: var(
 		--ran-ecwid-shop-teaser--title-link-hover-decoration,
 		underline
@@ -87,6 +88,12 @@
 	);
 }
 
+.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__link:focus-visible {
+	border-radius: var(--ran-ecwid-shop-teaser--image-border-radius, 0);
+	outline: 2px solid currentcolor;
+	outline-offset: 0.25rem;
+}
+
 .ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__price {
 	color: var(--ran-ecwid-shop-teaser--price-color, currentcolor);
 	display: block;
@@ -98,6 +105,13 @@
 	font-weight: var(--ran-ecwid-shop-teaser--price-font-weight, 400);
 	line-height: var(--ran-ecwid-shop-teaser--price-line-height, 1.4);
 	margin: 0;
+}
+
+.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__availability {
+	color: var(--ran-ecwid-shop-teaser--availability-color, currentcolor);
+	font-size: 0.875em;
+	font-weight: 700;
+	margin: var(--wp--preset--spacing--2-x-small, 0.25rem) 0 0;
 }
 
 .ran-ecwid-shop-teaser .ran-ecwid-shop-teaser__notice {

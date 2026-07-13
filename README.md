@@ -14,7 +14,7 @@ Its canonical block name is `ran/ecwid-shop-teaser`.
 ## Requirements
 
 - WordPress 6.5 or newer.
-- PHP 7.4 or newer.
+- PHP 8.0 or newer.
 - An Ecwid store integration, or filters that provide an Ecwid store ID and API
   token.
 
@@ -31,7 +31,7 @@ development rather than a production fallback.
 
 ## Usage
 
-Insert **Ecwid Shop Teaser** from the `PNS Blocks` category. Select the
+Insert **Ecwid Shop Teaser** from the core `Widgets` category. Select the
 desired category and product count in the block inspector. Published visitors
 receive cards from Ecwid when available, then the last-good cache or valid
 filter-provided fallback cards.
@@ -40,6 +40,16 @@ The editor uses these routes:
 
 - `POST /ran-ecwid-shop-teaser/v1/ecwid-shop-teaser/preview`
 - `POST /ran-ecwid-shop-teaser/v1/ecwid-shop-teaser/refresh`
+
+## External service
+
+The plugin optionally retrieves product data from the Ecwid REST API through
+the official Ecwid WordPress plugin or credentials supplied by its filters.
+That request sends the configured store ID, API token, category ID, and product
+query to Ecwid; it is made server-to-server and does not expose the API token
+to visitors. Sites using this integration are responsible for reviewing
+[Ecwid's terms of service](https://www.ecwid.com/terms-of-service) and
+[privacy policy](https://www.ecwid.com/privacy-policy).
 
 ## Development
 

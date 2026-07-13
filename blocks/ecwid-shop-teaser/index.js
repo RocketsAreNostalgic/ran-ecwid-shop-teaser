@@ -236,6 +236,7 @@ const DEFAULT_PRESENTATION_ATTRIBUTES = {
 	imageWidthValue: '18rem',
 	textAlign: 'center',
 	textColor: '',
+	titleColor: '',
 	descriptionColor: '',
 	titleSize: 'medium',
 	titleCustomSize: 0,
@@ -731,7 +732,10 @@ function getPresentationStyle( attributes, editorSettings = {} ) {
 	);
 	const imageMarginInline = getImageMarginInline( textAlign );
 	const legacyTextColor = attributes.textColor || '';
-	const descriptionColor = attributes.descriptionColor || legacyTextColor;
+	const titleColor =
+		attributes.titleColor ||
+		attributes.descriptionColor ||
+		legacyTextColor;
 	const priceColor = attributes.priceColor || legacyTextColor;
 	const blockGap = getBlockGapValue( attributes );
 
@@ -815,9 +819,8 @@ function getPresentationStyle( attributes, editorSettings = {} ) {
 			) + 'rem';
 	}
 
-	if ( descriptionColor ) {
-		styles[ '--ran-ecwid-shop-teaser--description-color' ] =
-			descriptionColor;
+	if ( titleColor ) {
+		styles[ '--ran-ecwid-shop-teaser--title-color' ] = titleColor;
 	}
 
 	if ( priceColor ) {
@@ -886,6 +889,7 @@ function EcwidProductGridEdit( props ) {
 		props.setAttributes( {
 			textAlign: DEFAULT_PRESENTATION_ATTRIBUTES.textAlign,
 			textColor: DEFAULT_PRESENTATION_ATTRIBUTES.textColor,
+			titleColor: DEFAULT_PRESENTATION_ATTRIBUTES.titleColor,
 			descriptionColor: DEFAULT_PRESENTATION_ATTRIBUTES.descriptionColor,
 			titleSize: DEFAULT_PRESENTATION_ATTRIBUTES.titleSize,
 			titleCustomSize: DEFAULT_PRESENTATION_ATTRIBUTES.titleCustomSize,
@@ -1752,14 +1756,17 @@ function TypographyToolsPanel( props ) {
 			{
 				hasValue() {
 					return (
+						!! attributes.titleColor ||
 						!! attributes.descriptionColor ||
 						!! attributes.textColor
 					);
 				},
 				isShownByDefault: false,
-				label: __( 'Description color', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title color', 'ran-ecwid-shop-teaser' ),
 				onDeselect() {
 					props.setAttributes( {
+						titleColor:
+							DEFAULT_PRESENTATION_ATTRIBUTES.titleColor,
 						descriptionColor:
 							DEFAULT_PRESENTATION_ATTRIBUTES.descriptionColor,
 						textColor: DEFAULT_PRESENTATION_ATTRIBUTES.textColor,
@@ -1769,14 +1776,17 @@ function TypographyToolsPanel( props ) {
 			},
 			el( ColorDropdownControl, {
 				colors: colorPalette,
-				label: __( 'Description color', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title color', 'ran-ecwid-shop-teaser' ),
 				value: getColorControlValue(
-					attributes.descriptionColor || attributes.textColor || '',
+					attributes.titleColor ||
+						attributes.descriptionColor ||
+						attributes.textColor ||
+						'',
 					colorPalette
 				),
 				onChange( value ) {
 					props.setAttributes( {
-						descriptionColor: getSerializableColorValue(
+						titleColor: getSerializableColorValue(
 							value,
 							colorPalette
 						),
@@ -1797,7 +1807,7 @@ function TypographyToolsPanel( props ) {
 					);
 				},
 				isShownByDefault: false,
-				label: __( 'Description letter case', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title letter case', 'ran-ecwid-shop-teaser' ),
 				onDeselect() {
 					props.setAttributes( {
 						titleTransform:
@@ -1833,7 +1843,7 @@ function TypographyToolsPanel( props ) {
 					);
 				},
 				isShownByDefault: false,
-				label: __( 'Description font size', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title font size', 'ran-ecwid-shop-teaser' ),
 				onDeselect() {
 					props.setAttributes( {
 						titleCustomSize:
@@ -1845,7 +1855,7 @@ function TypographyToolsPanel( props ) {
 			},
 			el( FontSizeControl, {
 				fontSizes: titleFontSizePresets,
-				label: __( 'Description font size', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title font size', 'ran-ecwid-shop-teaser' ),
 				value: getFontSizeControlValue( {
 					customMax: 96,
 					customValue: attributes.titleCustomSize || 0,
@@ -1878,7 +1888,7 @@ function TypographyToolsPanel( props ) {
 					);
 				},
 				isShownByDefault: false,
-				label: __( 'Description font weight', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title font weight', 'ran-ecwid-shop-teaser' ),
 				onDeselect() {
 					props.setAttributes( {
 						titleFontStyle:
@@ -1892,7 +1902,7 @@ function TypographyToolsPanel( props ) {
 			el( FontWeightControl, {
 				fontStyle: attributes.titleFontStyle || undefined,
 				fontWeight: attributes.titleFontWeight || undefined,
-				label: __( 'Description font weight', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title font weight', 'ran-ecwid-shop-teaser' ),
 				onChange( value ) {
 					props.setAttributes( {
 						titleFontStyle: value.fontStyle || '',
@@ -1908,7 +1918,7 @@ function TypographyToolsPanel( props ) {
 					return !! attributes.titleLineHeight;
 				},
 				isShownByDefault: false,
-				label: __( 'Description line height', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title line height', 'ran-ecwid-shop-teaser' ),
 				onDeselect() {
 					props.setAttributes( {
 						titleLineHeight:
@@ -1918,7 +1928,7 @@ function TypographyToolsPanel( props ) {
 				panelId,
 			},
 			el( LineHeightField, {
-				label: __( 'Description line height', 'ran-ecwid-shop-teaser' ),
+				label: __( 'Product title line height', 'ran-ecwid-shop-teaser' ),
 				value: attributes.titleLineHeight || undefined,
 				onChange( value ) {
 					props.setAttributes( {

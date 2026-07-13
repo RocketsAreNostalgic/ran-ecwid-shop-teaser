@@ -4,7 +4,10 @@
 !.env.example
 *.log
 coverage/
+.wp-env/
+.wordpress-org/
 .phpunit.result.cache
+dist/
 node_modules/
 vendor/
 test-results/

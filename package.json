@@ -1,9 +1,9 @@
 {
 	"name": "ran-ecwid-shop-teaser",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"private": true,
 	"description": "Standalone dynamic Ecwid shop teaser block for WordPress.",
-	"author": "bnjmnrsh",
+	"author": "RAN",
 	"license": "GPL-2.0-or-later",
 	"keywords": [
 		"wordpress",
@@ -11,7 +11,7 @@
 		"gutenberg",
 		"ecwid"
 	],
-	"homepage": "https://protestsandsuffragettes.com/",
+	"homepage": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser.git"
@@ -26,12 +26,16 @@
 	"scripts": {
 		"start": "wp-scripts start --source-path=blocks --output-path=build/blocks",
 		"build": "wp-scripts build --source-path=blocks --output-path=build/blocks",
-		"format": "wp-scripts format && prettier --write \"**/*.{css,md}\"",
-		"format:check": "wp-scripts lint-js && prettier --check \"**/*.{css,md}\"",
+		"format": "wp-scripts format && prettier --write \"**/*.{css,md,json}\"",
+		"format:check": "prettier --check \"**/*.{css,md,json}\"",
 		"lint:js": "wp-scripts lint-js",
 		"lint:css": "wp-scripts lint-style",
 		"lint:pkg-json": "wp-scripts lint-pkg-json",
-		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && prettier --check \"**/*.{css,md}\" && wp-scripts build --source-path=blocks --output-path=build/blocks"
+		"lint:php": "php tools/lint-php.php",
+		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist",
+		"archive": "php tools/build-release.php",
+		"archive:check": "php tools/build-release.php --check",
+		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && prettier --check \"**/*.{css,md,json}\" && pnpm lint:php && pnpm build && git diff --exit-code -- build/blocks"
 	},
 	"prettier": "@wordpress/prettier-config",
 	"packageManager": "pnpm@11.5.2"

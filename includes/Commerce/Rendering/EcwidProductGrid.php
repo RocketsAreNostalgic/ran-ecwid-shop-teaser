@@ -54,18 +54,34 @@ final class EcwidProductGrid {
 		?>
 		<div <?php echo $wrapper_attributes; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_block_wrapper_attributes() returns escaped attributes. ?>>
 			<?php foreach ( $products as $product ) : ?>
-				<article class="ran-ecwid-shop-teaser-card">
-					<a class="ran-ecwid-shop-teaser-card__media" href="<?php echo esc_url( $product['url'] ); ?>">
-						<img
-							src="<?php echo esc_url( $product['image_url'] ); ?>"
-							alt="<?php echo esc_attr( $product['image_alt'] ); ?>"
-							loading="lazy"
-						/>
+				<?php
+				$is_available    = ! empty( $product['enabled'] ) && ! empty( $product['in_stock'] );
+				$product_classes = array( 'ran-ecwid-shop-teaser-card' );
+
+				if ( ! $is_available ) {
+					$product_classes[] = 'ran-ecwid-shop-teaser-card--unavailable';
+				}
+				?>
+				<article class="<?php echo esc_attr( implode( ' ', $product_classes ) ); ?>">
+					<a class="ran-ecwid-shop-teaser-card__link" href="<?php echo esc_url( $product['url'] ); ?>" aria-label="<?php
+						/* translators: %s: Product name. */
+						echo esc_attr( sprintf( __( 'View %s', 'ran-ecwid-shop-teaser' ), $product['name'] ) );
+						?>">
+						<span class="ran-ecwid-shop-teaser-card__media">
+							<img
+								src="<?php echo esc_url( $product['image_url'] ); ?>"
+								alt="<?php echo esc_attr( $product['image_alt'] ); ?>"
+								loading="lazy"
+							/>
+						</span>
+						<h3 class="ran-ecwid-shop-teaser-card__title"><?php echo esc_html( $product['name'] ); ?></h3>
+						<?php if ( '' !== $product['price'] ) : ?>
+							<p class="ran-ecwid-shop-teaser-card__price"><?php echo esc_html( $product['price'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( ! $is_available ) : ?>
+							<p class="ran-ecwid-shop-teaser-card__availability"><?php esc_html_e( 'Unavailable', 'ran-ecwid-shop-teaser' ); ?></p>
+						<?php endif; ?>
 					</a>
-					<h3 class="ran-ecwid-shop-teaser-card__title"><a href="<?php echo esc_url( $product['url'] ); ?>"><?php echo esc_html( $product['name'] ); ?></a></h3>
-					<?php if ( '' !== $product['price'] ) : ?>
-						<p class="ran-ecwid-shop-teaser-card__price"><?php echo esc_html( $product['price'] ); ?></p>
-					<?php endif; ?>
 				</article>
 			<?php endforeach; ?>
 			<?php if ( self::should_render_debug_notice( $message ) ) : ?>
@@ -101,6 +117,7 @@ final class EcwidProductGrid {
 			'imageWidthValue'       => self::spacing_value( $attributes['imageWidthValue'] ?? '18rem' ),
 			'textAlign'             => self::allowlisted_value( $attributes['textAlign'] ?? 'center', array( 'left', 'center', 'right' ), 'center' ),
 			'textColor'             => self::normalize_css_color( $attributes['textColor'] ?? '' ),
+			'titleColor'            => self::normalize_css_color( $attributes['titleColor'] ?? '' ),
 			'descriptionColor'      => self::normalize_css_color( $attributes['descriptionColor'] ?? '' ),
 			'titleSize'             => self::font_size_slug( $attributes['titleSize'] ?? 'medium', 'medium' ),
 			'titleCustomSize'       => self::normalize_float( $attributes['titleCustomSize'] ?? 0, 0, 0, 96 ),
@@ -165,11 +182,13 @@ final class EcwidProductGrid {
 			$styles[] = '--ran-ecwid-shop-teaser--gap: ' . $attributes['gridGap'] . 'rem';
 		}
 
-		$description_color = '' !== $attributes['descriptionColor'] ? $attributes['descriptionColor'] : $attributes['textColor'];
-		$price_color       = '' !== $attributes['priceColor'] ? $attributes['priceColor'] : $attributes['textColor'];
+		$title_color = '' !== $attributes['titleColor']
+			? $attributes['titleColor']
+			: ( '' !== $attributes['descriptionColor'] ? $attributes['descriptionColor'] : $attributes['textColor'] );
+		$price_color = '' !== $attributes['priceColor'] ? $attributes['priceColor'] : $attributes['textColor'];
 
-		if ( '' !== $description_color ) {
-			$styles[] = '--ran-ecwid-shop-teaser--description-color: ' . $description_color;
+		if ( '' !== $title_color ) {
+			$styles[] = '--ran-ecwid-shop-teaser--title-color: ' . $title_color;
 		}
 
 		if ( '' !== $price_color ) {

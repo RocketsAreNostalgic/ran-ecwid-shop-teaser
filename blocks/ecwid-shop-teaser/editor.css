@@ -196,6 +196,12 @@
 	text-align: var(--ran-ecwid-shop-teaser--text-align, center);
 }
 
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__link {
+	color: inherit;
+	display: block;
+	text-decoration: none;
+}
+
 .ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__media {
 	border-radius: var(--ran-ecwid-shop-teaser--image-border-radius, 0);
 	display: block;
@@ -215,7 +221,7 @@
 }
 
 .ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__title {
-	color: var(--ran-ecwid-shop-teaser--description-color, inherit);
+	color: var(--ran-ecwid-shop-teaser--title-color, inherit);
 	display: block;
 	font-size: var(
 		--ran-ecwid-shop-teaser--title-font-size,
