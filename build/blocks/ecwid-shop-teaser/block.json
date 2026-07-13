@@ -1,0 +1,144 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ran/ecwid-shop-teaser",
+  "title": "Ecwid Shop Teaser",
+  "category": "widgets",
+  "description": "Render a product grid from an Ecwid category.",
+  "textdomain": "ran-ecwid-shop-teaser",
+  "attributes": {
+    "sourceMode": {
+      "type": "string",
+      "default": "category"
+    },
+    "categoryId": {
+      "type": "number",
+      "default": 0
+    },
+    "limit": {
+      "type": "number",
+      "default": 12
+    },
+    "showUnavailable": {
+      "type": "boolean",
+      "default": false
+    },
+    "cacheTtl": {
+      "type": "number",
+      "default": 300
+    },
+    "staticFallbackEnabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "fallbackMode": {
+      "type": "string",
+      "default": "last-good-cache-static"
+    },
+    "gridGap": {
+      "type": "number",
+      "default": 1.5
+    },
+    "imageAspectRatio": {
+      "type": "string",
+      "default": "3 / 2"
+    },
+    "imageFit": {
+      "type": "string",
+      "default": "cover"
+    },
+    "imageShape": {
+      "type": "string",
+      "default": "square"
+    },
+    "imageWidth": {
+      "type": "number",
+      "default": 18
+    },
+    "imageWidthValue": {
+      "type": "string",
+      "default": "18rem"
+    },
+    "textAlign": {
+      "type": "string",
+      "default": "center"
+    },
+    "textColor": {
+      "type": "string",
+      "default": ""
+    },
+    "descriptionColor": {
+      "type": "string",
+      "default": ""
+    },
+    "titleSize": {
+      "type": "string",
+      "default": "medium"
+    },
+    "titleCustomSize": {
+      "type": "number",
+      "default": 0
+    },
+    "titleFontStyle": {
+      "type": "string",
+      "default": ""
+    },
+    "titleFontWeight": {
+      "type": "string",
+      "default": ""
+    },
+    "titleLineHeight": {
+      "type": "string",
+      "default": ""
+    },
+    "titleTransform": {
+      "type": "string",
+      "default": "uppercase"
+    },
+    "priceSize": {
+      "type": "string",
+      "default": "small"
+    },
+    "priceCustomSize": {
+      "type": "number",
+      "default": 0
+    },
+    "priceFontStyle": {
+      "type": "string",
+      "default": ""
+    },
+    "priceFontWeight": {
+      "type": "string",
+      "default": ""
+    },
+    "priceLineHeight": {
+      "type": "string",
+      "default": ""
+    },
+    "priceColor": {
+      "type": "string",
+      "default": ""
+    },
+    "style": {
+      "type": "object",
+      "default": {}
+    }
+  },
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false
+  },
+  "example": {
+    "attributes": {
+      "categoryId": 0,
+      "limit": 3
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "render": "file:./render.php"
+}

@@ -1,0 +1,280 @@
+.ran-ecwid-shop-teaser-editor {
+	box-sizing: border-box;
+	inline-size: 100%;
+	max-inline-size: var(
+		--ran-ecwid-shop-teaser--editor-max-inline-size,
+		var(--wp--style--global--wide-size, 88rem)
+	);
+	margin-inline: auto;
+	padding-inline: 1rem;
+}
+
+.ran-ecwid-shop-teaser-editor__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.75rem;
+	justify-content: space-between;
+	padding: 0.5rem 0;
+	color: #50575e;
+	font-size: 0.75rem;
+	line-height: 1.4;
+}
+
+.ran-ecwid-shop-teaser-editor__message {
+	color: #50575e;
+	font-size: 0.8125rem;
+	margin-block: 0 0.75rem;
+}
+
+.ran-ecwid-shop-teaser-editor__control {
+	border: 0;
+	margin: 0 0 1.5rem;
+	padding: 0;
+}
+
+.ran-ecwid-shop-teaser-editor__control-label {
+	display: block;
+	margin-block-end: 0.5rem;
+	padding: 0;
+}
+
+.ran-ecwid-shop-teaser-editor__segmented-field,
+.ran-ecwid-shop-teaser-editor__dimension-field,
+.ran-ecwid-shop-teaser-editor__typography-field {
+	margin-block-end: 1rem;
+}
+
+.ran-ecwid-shop-teaser-editor__dimension-field {
+	grid-column: 1 / -1;
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor__segmented-field
+	.components-toggle-group-control {
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor__segmented-field
+	.components-toggle-group-control
+	.components-toggle-group-control-option-base {
+	flex: 1 1 0;
+	justify-content: center;
+}
+
+.ran-ecwid-shop-teaser-editor__range-unit-control {
+	align-items: flex-end;
+	display: grid;
+	gap: 0.75rem;
+	grid-template-columns: max-content minmax(0, 1fr);
+}
+
+.ran-ecwid-shop-teaser-editor__range-unit-control .components-range-control {
+	margin-block-end: 0;
+}
+
+.ran-ecwid-shop-teaser-editor__range-unit-control .components-base-control {
+	margin-block-end: 0;
+}
+
+.ran-ecwid-shop-teaser-editor__dimension-field
+	.components-base-control.component-box-control__unit-control {
+	margin-block-end: 0;
+}
+
+.ran-ecwid-shop-teaser-editor__dimension-field
+	.component-box-control__unit-control
+	~ .components-range-control {
+	margin-inline-start: 0.75rem;
+}
+
+.ran-ecwid-shop-teaser-editor__typography-field .components-font-size-picker {
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor__typography-field
+	.components-toggle-group-control {
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor__typography-field
+	.components-toggle-group-control
+	.components-toggle-group-control-option-base {
+	flex: 1 1 0;
+	justify-content: center;
+}
+
+.ran-ecwid-shop-teaser-editor__align-icon {
+	background-image: linear-gradient(currentcolor, currentcolor),
+		linear-gradient(currentcolor, currentcolor),
+		linear-gradient(currentcolor, currentcolor);
+	background-position:
+		0 0,
+		0 5px,
+		0 10px;
+	background-repeat: no-repeat;
+	background-size:
+		1rem 2px,
+		0.625rem 2px,
+		0.875rem 2px;
+	display: inline-block;
+	block-size: 0.75rem;
+	inline-size: 1.25rem;
+}
+
+.ran-ecwid-shop-teaser-editor__align-icon.is-align-center {
+	background-position:
+		50% 0,
+		50% 5px,
+		50% 10px;
+}
+
+.ran-ecwid-shop-teaser-editor__align-icon.is-align-right {
+	background-position:
+		100% 0,
+		100% 5px,
+		100% 10px;
+}
+
+.ran-ecwid-shop-teaser-editor__typography-field
+	.components-custom-select-control__button {
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor__color-dropdown {
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor__color-button.components-button {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 0;
+	box-shadow: none;
+	gap: 0.5rem;
+	inline-size: 100%;
+	justify-content: flex-start;
+	min-block-size: 2.5rem;
+	padding-inline: 0.75rem;
+	text-align: start;
+}
+
+.ran-ecwid-shop-teaser-editor__color-button.components-button:hover:not(
+		:disabled
+	) {
+	background: #fff;
+	border-color: #949494;
+	box-shadow: none;
+	color: #1e1e1e;
+}
+
+.ran-ecwid-shop-teaser-editor__color-button
+	.block-editor-panel-color-gradient-settings__color-name {
+	color: #1e1e1e;
+	font-weight: 400;
+}
+
+.ran-ecwid-shop-teaser-editor__color-popover {
+	padding: 1rem;
+}
+
+.ran-ecwid-shop-teaser-editor__reset-button.components-button {
+	justify-content: center;
+	inline-size: 100%;
+}
+
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--ran-ecwid-shop-teaser--gap, var(--wp--style--block-gap, 1.5rem));
+	align-items: start;
+	justify-content: var(--ran-ecwid-shop-teaser--justify-content, center);
+}
+
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card {
+	flex: 1 1 var(--ran-ecwid-shop-teaser--card-inline-size, 18rem);
+	max-inline-size: 100%;
+	min-inline-size: 0;
+	text-align: var(--ran-ecwid-shop-teaser--text-align, center);
+}
+
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__media {
+	border-radius: var(--ran-ecwid-shop-teaser--image-border-radius, 0);
+	display: block;
+	inline-size: 100%;
+	margin-inline: var(--ran-ecwid-shop-teaser--image-margin-inline, auto);
+	margin-block-end: var(--wp--preset--spacing--2-x-small, 0.25rem);
+	overflow: hidden;
+}
+
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__media img {
+	aspect-ratio: var(--ran-ecwid-shop-teaser--image-aspect-ratio, 3 / 2);
+	block-size: auto;
+	border-radius: inherit;
+	display: block;
+	inline-size: 100%;
+	object-fit: var(--ran-ecwid-shop-teaser--image-object-fit, cover);
+}
+
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__title {
+	color: var(--ran-ecwid-shop-teaser--description-color, inherit);
+	display: block;
+	font-size: var(
+		--ran-ecwid-shop-teaser--title-font-size,
+		var(--wp--preset--font-size--medium, 1.25rem)
+	);
+	font-style: var(--ran-ecwid-shop-teaser--title-font-style, normal);
+	font-weight: var(--ran-ecwid-shop-teaser--title-font-weight, 800);
+	line-height: var(--ran-ecwid-shop-teaser--title-line-height, 1.18);
+	margin-block: 0 var(--wp--preset--spacing--2-x-small, 0.25rem);
+	text-transform: var(
+		--ran-ecwid-shop-teaser--title-text-transform,
+		uppercase
+	);
+}
+
+.ran-ecwid-shop-teaser-editor .ran-ecwid-shop-teaser-card__price {
+	color: var(
+		--ran-ecwid-shop-teaser--price-color,
+		var(--wp--custom--color--secondary, #50575e)
+	);
+	display: block;
+	font-size: var(
+		--ran-ecwid-shop-teaser--price-font-size,
+		var(--wp--preset--font-size--small, 0.875rem)
+	);
+	font-style: var(--ran-ecwid-shop-teaser--price-font-style, normal);
+	font-weight: var(--ran-ecwid-shop-teaser--price-font-weight, 400);
+	line-height: var(--ran-ecwid-shop-teaser--price-line-height, 1.4);
+	margin: 0;
+}
+
+.ran-ecwid-shop-teaser-editor
+	.ran-ecwid-shop-teaser-card--skeleton
+	.ran-ecwid-shop-teaser-card__media {
+	aspect-ratio: var(--ran-ecwid-shop-teaser--image-aspect-ratio, 3 / 2);
+	background: #e0e0e0;
+	border-radius: var(--ran-ecwid-shop-teaser--image-border-radius, 0);
+}
+
+.ran-ecwid-shop-teaser-editor
+	.ran-ecwid-shop-teaser-card--skeleton
+	.ran-ecwid-shop-teaser-card__title {
+	background: #d6d6d6;
+	block-size: 1.5rem;
+	inline-size: 82%;
+	margin-inline: auto;
+}
+
+.ran-ecwid-shop-teaser-editor
+	.ran-ecwid-shop-teaser-card--skeleton
+	.ran-ecwid-shop-teaser-card__price {
+	background: #e0e0e0;
+	block-size: 1rem;
+	inline-size: 35%;
+	margin-inline: auto;
+}
+
+@media only screen and (min-width: 48.875rem) {
+	.ran-ecwid-shop-teaser-editor {
+		padding-inline: 2rem;
+	}
+}
