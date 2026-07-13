@@ -61,12 +61,10 @@ final class EcwidProductGrid {
 				if ( ! $is_available ) {
 					$product_classes[] = 'ran-ecwid-shop-teaser-card--unavailable';
 				}
+
 				?>
 				<article class="<?php echo esc_attr( implode( ' ', $product_classes ) ); ?>">
-					<a class="ran-ecwid-shop-teaser-card__link" href="<?php echo esc_url( $product['url'] ); ?>" aria-label="<?php
-						/* translators: %s: Product name. */
-						echo esc_attr( sprintf( __( 'View %s', 'ran-ecwid-shop-teaser' ), $product['name'] ) );
-						?>">
+					<a class="ran-ecwid-shop-teaser-card__link" href="<?php echo esc_url( $product['url'] ); ?>">
 						<span class="ran-ecwid-shop-teaser-card__media">
 							<img
 								src="<?php echo esc_url( $product['image_url'] ); ?>"
@@ -141,7 +139,7 @@ final class EcwidProductGrid {
 	 * @return string
 	 */
 	private static function get_presentation_style( $attributes ) {
-		$image_shape_values = array(
+		$image_shape_values  = array(
 			'square' => '0',
 			'soft'   => '0.5rem',
 			'round'  => '999rem',
@@ -154,7 +152,7 @@ final class EcwidProductGrid {
 			$image_margin_inline = 'auto 0';
 		}
 
-		$block_gap = self::block_gap_value( $attributes['style']['spacing']['blockGap'] ?? '' );
+		$block_gap  = self::block_gap_value( $attributes['style']['spacing']['blockGap'] ?? '' );
 		$card_width = '' !== $attributes['imageWidthValue'] ? $attributes['imageWidthValue'] : '18rem';
 
 		$styles = array(
@@ -382,11 +380,11 @@ final class EcwidProductGrid {
 	 * Check whether an optional legacy float differs from its default.
 	 *
 	 * @param mixed $value Raw value.
-	 * @param float $default Default value.
+	 * @param float $default_value Default value.
 	 * @return bool
 	 */
-	private static function is_non_default_float( $value, $default ) {
-		return is_numeric( $value ) && abs( (float) $value - $default ) > 0.0001;
+	private static function is_non_default_float( $value, $default_value ) {
+		return is_numeric( $value ) && abs( (float) $value - $default_value ) > 0.0001;
 	}
 
 	/**

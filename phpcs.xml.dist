@@ -1,15 +1,12 @@
 <?xml version="1.0"?>
 <ruleset name="RAN Ecwid Shop Teaser">
-	<description>WordPress and PHP 8.0 compatibility checks for plugin source.</description>
+	<description>WordPress coding-standard checks for plugin source.</description>
 	<file>ran-ecwid-shop-teaser.php</file>
 	<file>includes</file>
-	<file>tests</file>
-	<file>tools</file>
 	<exclude-pattern>vendor/*</exclude-pattern>
-	<rule ref="WordPress-Extra" />
-	<rule ref="PHPCompatibilityWP">
-		<properties>
-			<property name="testVersion" value="8.0-" />
-		</properties>
+	<rule ref="WordPress-Extra">
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
+		<exclude name="WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase" />
 	</rule>
 </ruleset>

@@ -26,8 +26,8 @@
 	"scripts": {
 		"start": "wp-scripts start --source-path=blocks --output-path=build/blocks",
 		"build": "wp-scripts build --source-path=blocks --output-path=build/blocks",
-		"format": "wp-scripts format && prettier --write \"**/*.{css,md,json}\"",
-		"format:check": "prettier --check \"**/*.{css,md,json}\"",
+		"format": "prettier --write --ignore-path .prettierignore --ignore-unknown .",
+		"format:check": "prettier --check --ignore-path .prettierignore --ignore-unknown .",
 		"lint:js": "wp-scripts lint-js",
 		"lint:css": "wp-scripts lint-style",
 		"lint:pkg-json": "wp-scripts lint-pkg-json",
@@ -35,7 +35,8 @@
 		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist",
 		"archive": "php tools/build-release.php",
 		"archive:check": "php tools/build-release.php --check",
-		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && prettier --check \"**/*.{css,md,json}\" && pnpm lint:php && pnpm build && git diff --exit-code -- build/blocks"
+		"wordpress-org:prepare": "sh tools/prepare-wordpress-org.sh",
+		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && pnpm format:check && pnpm lint:php && pnpm build && git diff --exit-code -- build/blocks"
 	},
 	"prettier": "@wordpress/prettier-config",
 	"packageManager": "pnpm@11.5.2"

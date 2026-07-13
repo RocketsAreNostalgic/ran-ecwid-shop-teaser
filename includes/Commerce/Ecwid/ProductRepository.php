@@ -66,9 +66,9 @@ final class ProductRepository {
 			);
 		}
 
-		$fresh_key    = $this->fresh_cache_key( $query );
+		$fresh_key     = $this->fresh_cache_key( $query );
 		$last_good_key = $this->last_good_cache_key( $query );
-		$fresh        = get_transient( $fresh_key );
+		$fresh         = get_transient( $fresh_key );
 
 		if ( is_array( $fresh ) ) {
 			return array(

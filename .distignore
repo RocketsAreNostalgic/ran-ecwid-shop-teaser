@@ -4,7 +4,8 @@
 .gitignore
 .phpunit.result.cache
 .wp-env
-.wordpress-org
+wordpress-org
+wordpress-org-assets
 .distignore
 .editorconfig
 .eslintrc.json
@@ -16,6 +17,7 @@ dist
 node_modules
 package.json
 phpcs.xml.dist
+phpcs-compat.xml.dist
 phpunit.xml.dist
 pnpm-lock.yaml
 pnpm-workspace.yaml

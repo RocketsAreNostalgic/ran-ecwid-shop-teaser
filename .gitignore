@@ -6,6 +6,7 @@
 coverage/
 .wp-env/
 .wordpress-org/
+wordpress-org/svn/
 .phpunit.result.cache
 dist/
 node_modules/

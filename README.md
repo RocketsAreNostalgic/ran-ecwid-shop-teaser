@@ -5,18 +5,18 @@ Its canonical block name is `ran/ecwid-shop-teaser`.
 
 ## Features
 
-- Provides editor previews, caching, and theme-independent baseline styling.
-- Reads credentials from the installed Ecwid WordPress plugin by default.
-- Safely renders last-good cached or filter-provided cards when Ecwid is
-  unavailable.
-- Keeps diagnostic information editor-only.
+-   Provides editor previews, caching, and theme-independent baseline styling.
+-   Reads credentials from the installed Ecwid WordPress plugin by default.
+-   Safely renders last-good cached or filter-provided cards when Ecwid is
+    unavailable.
+-   Keeps diagnostic information editor-only.
 
 ## Requirements
 
-- WordPress 6.5 or newer.
-- PHP 8.0 or newer.
-- An Ecwid store integration, or filters that provide an Ecwid store ID and API
-  token.
+-   WordPress 6.5 or newer.
+-   PHP 8.0 or newer.
+-   An Ecwid store integration, or filters that provide an Ecwid store ID and API
+    token.
 
 ## Installation
 
@@ -38,8 +38,8 @@ filter-provided fallback cards.
 
 The editor uses these routes:
 
-- `POST /ran-ecwid-shop-teaser/v1/ecwid-shop-teaser/preview`
-- `POST /ran-ecwid-shop-teaser/v1/ecwid-shop-teaser/refresh`
+-   `POST /ran-ecwid-shop-teaser/v1/ecwid-shop-teaser/preview`
+-   `POST /ran-ecwid-shop-teaser/v1/ecwid-shop-teaser/refresh`
 
 ## External service
 

@@ -1,0 +1,100 @@
+name: Quality
+
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    verify:
+        name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - php: '8.0'
+                      wordpress: '6.5'
+                    - php: '8.3'
+                      wordpress: latest
+        services:
+            mysql:
+                image: mysql:8.0
+                env:
+                    MYSQL_DATABASE: wordpress_test
+                    MYSQL_ROOT_PASSWORD: root
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+                    --health-interval=10s
+                    --health-timeout=5s
+                    --health-retries=5
+                ports:
+                    - 3306:3306
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php }}
+                  coverage: none
+
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 11.5.2
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install JavaScript dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build and check generated assets
+              run: pnpm check
+
+            - name: Install PHP development dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Lint PHP and WordPress coding standards
+              run: |
+                  php tools/lint-php.php
+                  composer lint
+                  composer lint:compat
+
+            - name: Build and validate the clean release archive
+              run: php tools/build-release.php
+
+            - name: Install WP-CLI
+              run: |
+                  curl -sSLo wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+                  php wp-cli.phar --info
+
+            - name: Verify translation template freshness
+              if: matrix.php == '8.3'
+              run: |
+                  php wp-cli.phar i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist
+                  git diff --exit-code -- languages/ran-ecwid-shop-teaser.pot
+
+            - name: Install WordPress integration-test environment
+              run: |
+                  curl -sSLo /tmp/install-wp-tests.sh https://develop.svn.wordpress.org/trunk/tests/phpunit/includes/install-wp-tests.sh
+                  bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }}
+
+            - name: Run WordPress integration tests
+              run: vendor/bin/phpunit -c phpunit.xml.dist
+
+            - name: Install and activate the release ZIP in fresh WordPress
+              run: |
+                  fresh_root=/tmp/ran-ecwid-shop-teaser-release
+                  php wp-cli.phar core download --path="$fresh_root"
+                  php wp-cli.phar config create --path="$fresh_root" --dbname=ran_ecwid_shop_teaser_release --dbuser=root --dbpass=root --dbhost=127.0.0.1:3306 --skip-check
+                  php wp-cli.phar db create --path="$fresh_root"
+                  php wp-cli.phar core install --path="$fresh_root" --url=http://localhost --title='RAN release test' --admin_user=admin --admin_password=release-test-password --admin_email=admin@example.test
+                  php wp-cli.phar plugin install "${GITHUB_WORKSPACE}/dist/ran-ecwid-shop-teaser-1.0.0.zip" --path="$fresh_root" --activate
+                  php wp-cli.phar plugin is-active ran-ecwid-shop-teaser --path="$fresh_root"
+                  php wp-cli.phar plugin install plugin-check --path="$fresh_root" --activate
+                  php wp-cli.phar plugin check ran-ecwid-shop-teaser --path="$fresh_root"

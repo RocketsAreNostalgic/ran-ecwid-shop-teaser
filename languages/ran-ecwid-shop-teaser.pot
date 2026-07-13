@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-13T11:26:50+00:00\n"
+"POT-Creation-Date: 2026-07-13T11:40:11+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ran-ecwid-shop-teaser\n"
@@ -104,16 +104,11 @@ msgstr ""
 msgid "Direct Ecwid REST request failed: %s"
 msgstr ""
 
-#: includes/Commerce/Rendering/EcwidProductGrid.php:66
-#, php-format
-msgid "View %s"
-msgstr ""
-
-#: includes/Commerce/Rendering/EcwidProductGrid.php:79
+#: includes/Commerce/Rendering/EcwidProductGrid.php:80
 msgid "Unavailable"
 msgstr ""
 
-#: includes/Commerce/Rendering/EcwidProductGrid.php:536
+#: includes/Commerce/Rendering/EcwidProductGrid.php:537
 msgid "No Ecwid products are available for this grid."
 msgstr ""
 
@@ -206,129 +201,129 @@ msgstr ""
 msgid "Soft"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:937
+#: blocks/ecwid-shop-teaser/index.js:935
 msgid "Product cache refresh failed."
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:993
+#: blocks/ecwid-shop-teaser/index.js:991
 msgid "Product preview could not be loaded."
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1030
+#: blocks/ecwid-shop-teaser/index.js:1028
 msgid "Ecwid products"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1034
+#: blocks/ecwid-shop-teaser/index.js:1032
 msgid "Ecwid category ID"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1042
+#: blocks/ecwid-shop-teaser/index.js:1040
 msgid "Maximum products"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1051
+#: blocks/ecwid-shop-teaser/index.js:1049
 msgid "Show unavailable products"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1063
+#: blocks/ecwid-shop-teaser/index.js:1061
 msgid "Fresh cache seconds"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1073
+#: blocks/ecwid-shop-teaser/index.js:1071
 msgid "Allow filter-provided fallback products"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1095
+#: blocks/ecwid-shop-teaser/index.js:1093
 msgid "Refreshing…"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1096
+#: blocks/ecwid-shop-teaser/index.js:1094
 msgid "Refresh Ecwid data"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1150
+#: blocks/ecwid-shop-teaser/index.js:1148
 msgid "Ecwid category preview"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1151
+#: blocks/ecwid-shop-teaser/index.js:1149
 msgid "Set an Ecwid category ID"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1153
+#: blocks/ecwid-shop-teaser/index.js:1151
 msgid "Loading Ecwid products"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1155
+#: blocks/ecwid-shop-teaser/index.js:1153
 msgid "Not set"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1193
-#: blocks/ecwid-shop-teaser/index.js:1451
+#: blocks/ecwid-shop-teaser/index.js:1191
+#: blocks/ecwid-shop-teaser/index.js:1449
 msgid "Image ratio"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1208
-#: blocks/ecwid-shop-teaser/index.js:1520
+#: blocks/ecwid-shop-teaser/index.js:1206
+#: blocks/ecwid-shop-teaser/index.js:1518
 msgid "Image shape"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1223
-#: blocks/ecwid-shop-teaser/index.js:1486
+#: blocks/ecwid-shop-teaser/index.js:1221
+#: blocks/ecwid-shop-teaser/index.js:1484
 msgid "Image fit"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1229
+#: blocks/ecwid-shop-teaser/index.js:1227
 msgid "Crop"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1230
+#: blocks/ecwid-shop-teaser/index.js:1228
 msgid "Fit"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1276
+#: blocks/ecwid-shop-teaser/index.js:1274
 msgid "Card min width"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1277
+#: blocks/ecwid-shop-teaser/index.js:1275
 msgid "Card gap"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1278
+#: blocks/ecwid-shop-teaser/index.js:1276
 msgid "Wrapper padding"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1282
+#: blocks/ecwid-shop-teaser/index.js:1280
 msgid "Wrapper margin"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1288
+#: blocks/ecwid-shop-teaser/index.js:1286
 msgid "Dimensions"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1420
+#: blocks/ecwid-shop-teaser/index.js:1418
 msgid "Reset dimensions"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1434
+#: blocks/ecwid-shop-teaser/index.js:1432
 msgid "Images"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1716
+#: blocks/ecwid-shop-teaser/index.js:1714
 msgid "Typography"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1733
-#: blocks/ecwid-shop-teaser/index.js:2094
-#: blocks/ecwid-shop-teaser/index.js:2102
+#: blocks/ecwid-shop-teaser/index.js:1731
+#: blocks/ecwid-shop-teaser/index.js:2106
+#: blocks/ecwid-shop-teaser/index.js:2114
 msgid "Text alignment"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1765
-#: blocks/ecwid-shop-teaser/index.js:1779
+#: blocks/ecwid-shop-teaser/index.js:1763
+#: blocks/ecwid-shop-teaser/index.js:1776
 msgid "Product title color"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1810
+#: blocks/ecwid-shop-teaser/index.js:1807
 msgid "Product title letter case"
 msgstr ""
 
@@ -338,36 +333,36 @@ msgid "Product title font size"
 msgstr ""
 
 #: blocks/ecwid-shop-teaser/index.js:1891
-#: blocks/ecwid-shop-teaser/index.js:1905
+#: blocks/ecwid-shop-teaser/index.js:1908
 msgid "Product title font weight"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1921
-#: blocks/ecwid-shop-teaser/index.js:1931
+#: blocks/ecwid-shop-teaser/index.js:1927
+#: blocks/ecwid-shop-teaser/index.js:1940
 msgid "Product title line height"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1947
-#: blocks/ecwid-shop-teaser/index.js:1958
+#: blocks/ecwid-shop-teaser/index.js:1959
+#: blocks/ecwid-shop-teaser/index.js:1970
 msgid "Pricing color"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:1987
 #: blocks/ecwid-shop-teaser/index.js:1999
+#: blocks/ecwid-shop-teaser/index.js:2011
 msgid "Pricing font size"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:2032
-#: blocks/ecwid-shop-teaser/index.js:2046
+#: blocks/ecwid-shop-teaser/index.js:2044
+#: blocks/ecwid-shop-teaser/index.js:2058
 msgid "Pricing font weight"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:2062
-#: blocks/ecwid-shop-teaser/index.js:2072
+#: blocks/ecwid-shop-teaser/index.js:2074
+#: blocks/ecwid-shop-teaser/index.js:2084
 msgid "Pricing line height"
 msgstr ""
 
-#: blocks/ecwid-shop-teaser/index.js:2182
+#: blocks/ecwid-shop-teaser/index.js:2194
 msgid "Letter case"
 msgstr ""
 

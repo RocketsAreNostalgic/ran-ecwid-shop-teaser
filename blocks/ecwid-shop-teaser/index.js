@@ -733,9 +733,7 @@ function getPresentationStyle( attributes, editorSettings = {} ) {
 	const imageMarginInline = getImageMarginInline( textAlign );
 	const legacyTextColor = attributes.textColor || '';
 	const titleColor =
-		attributes.titleColor ||
-		attributes.descriptionColor ||
-		legacyTextColor;
+		attributes.titleColor || attributes.descriptionColor || legacyTextColor;
 	const priceColor = attributes.priceColor || legacyTextColor;
 	const blockGap = getBlockGapValue( attributes );
 
@@ -1765,8 +1763,7 @@ function TypographyToolsPanel( props ) {
 				label: __( 'Product title color', 'ran-ecwid-shop-teaser' ),
 				onDeselect() {
 					props.setAttributes( {
-						titleColor:
-							DEFAULT_PRESENTATION_ATTRIBUTES.titleColor,
+						titleColor: DEFAULT_PRESENTATION_ATTRIBUTES.titleColor,
 						descriptionColor:
 							DEFAULT_PRESENTATION_ATTRIBUTES.descriptionColor,
 						textColor: DEFAULT_PRESENTATION_ATTRIBUTES.textColor,
@@ -1807,7 +1804,10 @@ function TypographyToolsPanel( props ) {
 					);
 				},
 				isShownByDefault: false,
-				label: __( 'Product title letter case', 'ran-ecwid-shop-teaser' ),
+				label: __(
+					'Product title letter case',
+					'ran-ecwid-shop-teaser'
+				),
 				onDeselect() {
 					props.setAttributes( {
 						titleTransform:
@@ -1888,7 +1888,10 @@ function TypographyToolsPanel( props ) {
 					);
 				},
 				isShownByDefault: false,
-				label: __( 'Product title font weight', 'ran-ecwid-shop-teaser' ),
+				label: __(
+					'Product title font weight',
+					'ran-ecwid-shop-teaser'
+				),
 				onDeselect() {
 					props.setAttributes( {
 						titleFontStyle:
@@ -1902,7 +1905,10 @@ function TypographyToolsPanel( props ) {
 			el( FontWeightControl, {
 				fontStyle: attributes.titleFontStyle || undefined,
 				fontWeight: attributes.titleFontWeight || undefined,
-				label: __( 'Product title font weight', 'ran-ecwid-shop-teaser' ),
+				label: __(
+					'Product title font weight',
+					'ran-ecwid-shop-teaser'
+				),
 				onChange( value ) {
 					props.setAttributes( {
 						titleFontStyle: value.fontStyle || '',
@@ -1918,7 +1924,10 @@ function TypographyToolsPanel( props ) {
 					return !! attributes.titleLineHeight;
 				},
 				isShownByDefault: false,
-				label: __( 'Product title line height', 'ran-ecwid-shop-teaser' ),
+				label: __(
+					'Product title line height',
+					'ran-ecwid-shop-teaser'
+				),
 				onDeselect() {
 					props.setAttributes( {
 						titleLineHeight:
@@ -1928,7 +1937,10 @@ function TypographyToolsPanel( props ) {
 				panelId,
 			},
 			el( LineHeightField, {
-				label: __( 'Product title line height', 'ran-ecwid-shop-teaser' ),
+				label: __(
+					'Product title line height',
+					'ran-ecwid-shop-teaser'
+				),
 				value: attributes.titleLineHeight || undefined,
 				onChange( value ) {
 					props.setAttributes( {

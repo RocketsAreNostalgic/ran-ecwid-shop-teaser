@@ -6,7 +6,11 @@
 		--ran-ecwid-shop-teaser--title-font-size,var(--wp--preset--font-size--medium,1.25rem)
 	);font-style:var(--ran-ecwid-shop-teaser--title-font-style,normal);font-weight:var(--ran-ecwid-shop-teaser--title-font-weight,800);line-height:var(--ran-ecwid-shop-teaser--title-line-height,1.18);margin-block:0 var(--wp--preset--spacing--2-x-small,.25rem);text-transform:var(
 		--ran-ecwid-shop-teaser--title-text-transform,uppercase
-	)}.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__link:focus-visible .ran-ecwid-shop-teaser-card__title,.ran-ecwid-shop-teaser .ran-ecwid-shop-teaser-card__link:hover .ran-ecwid-shop-teaser-card__title{-webkit-text-decoration:var(
+	)}.ran-ecwid-shop-teaser
+	.ran-ecwid-shop-teaser-card__link:focus-visible
+	.ran-ecwid-shop-teaser-card__title,.ran-ecwid-shop-teaser
+	.ran-ecwid-shop-teaser-card__link:hover
+	.ran-ecwid-shop-teaser-card__title{-webkit-text-decoration:var(
 		--ran-ecwid-shop-teaser--title-link-hover-decoration,underline
 	);text-decoration:var(
 		--ran-ecwid-shop-teaser--title-link-hover-decoration,underline
