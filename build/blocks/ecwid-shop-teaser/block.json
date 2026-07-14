@@ -2,7 +2,7 @@
   "$schema": "https://schemas.wp.org/wp/6.5/block.json",
   "apiVersion": 3,
   "name": "ran/ecwid-shop-teaser",
-  "title": "Ecwid Shop Teaser",
+  "title": "RAN Ecwid Shop Teaser",
   "category": "widgets",
   "description": "Render a product grid from an Ecwid category.",
   "textdomain": "ran-ecwid-shop-teaser",
