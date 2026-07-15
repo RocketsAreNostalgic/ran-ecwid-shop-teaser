@@ -32,7 +32,7 @@
 		"lint:css": "wp-scripts lint-style",
 		"lint:pkg-json": "wp-scripts lint-pkg-json",
 		"lint:php": "php tools/lint-php.php",
-		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist",
+		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist && php tools/annotate-pot-release-version.php",
 		"archive": "php tools/build-release.php",
 		"archive:check": "php tools/build-release.php --check",
 		"wordpress-org:prepare": "sh tools/prepare-wordpress-org.sh",

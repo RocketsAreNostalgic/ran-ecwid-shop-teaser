@@ -1,0 +1,31 @@
+{
+	"bootstrap-sha": "3ed84ff888db852dc13e7d0f3a846a451236f77d",
+	"packages": {
+		".": {
+			"release-type": "php",
+			"package-name": "ran-ecwid-shop-teaser",
+			"changelog-path": "CHANGELOG.md",
+			"include-component-in-tag": false,
+			"include-v-in-tag": true,
+			"extra-files": [
+				{
+					"type": "generic",
+					"path": "ran-ecwid-shop-teaser.php"
+				},
+				{
+					"type": "generic",
+					"path": "readme.txt"
+				},
+				{
+					"type": "json",
+					"path": "package.json",
+					"jsonpath": "$.version"
+				},
+				{
+					"type": "generic",
+					"path": "languages/ran-ecwid-shop-teaser.pot"
+				}
+			]
+		}
+	}
+}

@@ -3,7 +3,9 @@
  * Plugin Name: RAN Ecwid Shop Teaser
  * Plugin URI: https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser
  * Description: A dynamic Ecwid product-grid block with editor previews, caching, and theme-independent baseline styling.
+ * x-release-please-start-version
  * Version: 1.0.0
+ * x-release-please-end
  * Author: RAN
  * Author URI: https://github.com/RocketsAreNostalgic/
  * Text Domain: ran-ecwid-shop-teaser
@@ -20,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RAN_ECWID_SHOP_TEASER_VERSION', '1.0.0' );
+define( 'RAN_ECWID_SHOP_TEASER_VERSION', '1.0.0' ); // x-release-please-version
 define( 'RAN_ECWID_SHOP_TEASER_PLUGIN_FILE', __FILE__ );
 define( 'RAN_ECWID_SHOP_TEASER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RAN_ECWID_SHOP_TEASER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
