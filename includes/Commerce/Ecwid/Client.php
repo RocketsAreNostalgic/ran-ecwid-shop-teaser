@@ -42,7 +42,13 @@ final class Client {
 		$token    = $this->credentials->get_token();
 
 		if ( 0 >= $store_id || '' === $token ) {
-			return new \WP_Error( 'ran_ecwid_shop_teaser_missing_credentials', __( 'Ecwid credentials are unavailable.', 'ran-ecwid-shop-teaser' ) );
+			return new \WP_Error(
+				'ran_ecwid_shop_teaser_missing_credentials',
+				__(
+					'Activate and configure the official Ecwid plugin, or provide an Ecwid store ID and API token through the ran_ecwid_shop_teaser_store_id and ran_ecwid_shop_teaser_token filters.',
+					'ran-ecwid-shop-teaser'
+				)
+			);
 		}
 
 		$url = add_query_arg(

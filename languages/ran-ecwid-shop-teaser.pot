@@ -45,8 +45,8 @@ msgstr ""
 msgid "RAN Ecwid Shop Teaser could not register because its compiled build assets are missing. Reinstall the complete plugin package, including build/blocks/."
 msgstr ""
 
-#: includes/Commerce/Ecwid/Client.php:45
-msgid "Ecwid credentials are unavailable."
+#: includes/Commerce/Ecwid/Client.php:48
+msgid "Activate and configure the official Ecwid plugin, or provide an Ecwid store ID and API token through the ran_ecwid_shop_teaser_store_id and ran_ecwid_shop_teaser_token filters."
 msgstr ""
 
 #: includes/Commerce/Ecwid/Client.php:81
