@@ -25,7 +25,7 @@
 	},
 	"scripts": {
 		"hooks:install": "git config core.hooksPath .githooks",
-		"prepare": "pnpm hooks:install",
+		"prepare": "pnpm run hooks:install",
 		"start": "wp-scripts start --source-path=blocks --output-path=build/blocks",
 		"build": "wp-scripts build --source-path=blocks --output-path=build/blocks",
 		"format": "prettier --write --ignore-path .prettierignore --ignore-unknown .",
