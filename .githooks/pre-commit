@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -eu
+
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^(blocks/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|webpack\.config\.js$)'; then
+	exit 0
+fi
+
+pnpm build
+
+if ! git diff --quiet -- build/blocks || test -n "$(git ls-files --others --exclude-standard -- build/blocks)"; then
+	echo 'Generated block assets are out of date.' >&2
+	echo 'Review and stage the updated files under build/blocks before committing.' >&2
+	git diff --name-only -- build/blocks >&2
+	git ls-files --others --exclude-standard -- build/blocks >&2
+	exit 1
+fi
