@@ -53,7 +53,7 @@ jobs:
             - name: Install JavaScript dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Build and check generated assets
+            - name: Check source
               run: pnpm check
 
             - name: Install PHP development dependencies
@@ -73,11 +73,9 @@ jobs:
                   curl -sSLo wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
                   php wp-cli.phar --info
 
-            - name: Verify translation template freshness
+            - name: Verify generated assets and translation template freshness
               if: matrix.php == '8.3'
-              run: |
-                  pnpm i18n:pot
-                  git diff --exit-code -- languages/ran-ecwid-shop-teaser.pot
+              run: pnpm check:generated
 
             - name: Install WordPress integration-test environment
               run: |
@@ -85,7 +83,7 @@ jobs:
                   bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }}
 
             - name: Run WordPress integration tests
-              run: vendor/bin/phpunit -c phpunit.xml.dist
+              run: pnpm test:php
 
             - name: Install and activate the release ZIP in fresh WordPress
               run: |

@@ -2,16 +2,25 @@
 
 set -eu
 
-if ! git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^(blocks/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|webpack\.config\.js$)'; then
-	exit 0
+if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^(blocks/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|webpack\.config\.js$)'; then
+	pnpm build
+
+	if ! git diff --quiet -- build/blocks || test -n "$(git ls-files --others --exclude-standard -- build/blocks)"; then
+		echo 'Generated block assets are out of date.' >&2
+		echo 'Review and stage the updated files under build/blocks before committing.' >&2
+		git diff --name-only -- build/blocks >&2
+		git ls-files --others --exclude-standard -- build/blocks >&2
+		exit 1
+	fi
 fi
 
-pnpm build
+if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^(blocks/|includes/|ran-ecwid-shop-teaser\.php$|tools/annotate-pot-release-version\.php$)'; then
+	pnpm i18n:pot
 
-if ! git diff --quiet -- build/blocks || test -n "$(git ls-files --others --exclude-standard -- build/blocks)"; then
-	echo 'Generated block assets are out of date.' >&2
-	echo 'Review and stage the updated files under build/blocks before committing.' >&2
-	git diff --name-only -- build/blocks >&2
-	git ls-files --others --exclude-standard -- build/blocks >&2
-	exit 1
+	if ! git diff --quiet -- languages/ran-ecwid-shop-teaser.pot; then
+		echo 'The translation template is out of date.' >&2
+		echo 'Review and stage languages/ran-ecwid-shop-teaser.pot before committing.' >&2
+		git diff --name-only -- languages/ran-ecwid-shop-teaser.pot >&2
+		exit 1
+	fi
 fi
