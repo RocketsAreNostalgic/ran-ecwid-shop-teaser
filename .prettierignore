@@ -1,4 +1,5 @@
 build/
+.codex/skills/
 node_modules/
 vendor/
 *.min.css

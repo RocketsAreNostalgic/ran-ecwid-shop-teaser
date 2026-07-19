@@ -70,7 +70,12 @@ jobs:
 
             - name: Install WP-CLI
               run: |
-                  curl -sSLo wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+                  curl --fail --location --silent --show-error \
+                      --output wp-cli.phar \
+                      https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+                  chmod +x wp-cli.phar
+                  ln --symbolic wp-cli.phar wp
+                  echo "${GITHUB_WORKSPACE}" >> "${GITHUB_PATH}"
                   php wp-cli.phar --info
 
             - name: Verify generated assets and translation template freshness
@@ -79,8 +84,10 @@ jobs:
 
             - name: Install WordPress integration-test environment
               run: |
-                  curl -sSLo /tmp/install-wp-tests.sh https://develop.svn.wordpress.org/trunk/tests/phpunit/includes/install-wp-tests.sh
-                  bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }}
+                  curl --fail --location --silent --show-error \
+                      --output /tmp/install-wp-tests.sh \
+                      https://raw.githubusercontent.com/wp-cli/scaffold-command/main/templates/install-wp-tests.sh
+                  bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }} true
 
             - name: Run WordPress integration tests
               run: pnpm test:php
