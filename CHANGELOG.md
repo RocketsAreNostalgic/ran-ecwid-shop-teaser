@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.1.0...v1.1.1) (2026-07-19)
+
+
+### Miscellaneous Chores
+
+* ignore generated changelog ([0ffafab](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/0ffafab50f08eaadd937ae6be8a68d5d9ad37161))
+
 ## [1.1.0](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.0.0...v1.1.0) (2026-07-17)
 
 
