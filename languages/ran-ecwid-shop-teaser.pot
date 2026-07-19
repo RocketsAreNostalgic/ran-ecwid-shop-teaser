@@ -10,9 +10,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-13T11:40:11+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"X-Generator: WP-CLI 1.1.0\n"
 "X-Domain: ran-ecwid-shop-teaser\n"
 # x-release-please-end
 
@@ -45,15 +43,15 @@ msgstr ""
 msgid "RAN Ecwid Shop Teaser could not register because its compiled build assets are missing. Reinstall the complete plugin package, including build/blocks/."
 msgstr ""
 
-#: includes/Commerce/Ecwid/Client.php:48
+#: includes/Commerce/Ecwid/Client.php:47
 msgid "Activate and configure the official Ecwid plugin, or provide an Ecwid store ID and API token through the ran_ecwid_shop_teaser_store_id and ran_ecwid_shop_teaser_token filters."
 msgstr ""
 
-#: includes/Commerce/Ecwid/Client.php:81
+#: includes/Commerce/Ecwid/Client.php:87
 msgid "Ecwid returned an unexpected response."
 msgstr ""
 
-#: includes/Commerce/Ecwid/Client.php:89
+#: includes/Commerce/Ecwid/Client.php:95
 msgid "Ecwid returned invalid JSON."
 msgstr ""
 
@@ -370,7 +368,7 @@ msgstr ""
 
 #: blocks/ecwid-shop-teaser/block.json
 msgctxt "block title"
-msgid "Ecwid Shop Teaser"
+msgid "RAN Ecwid Shop Teaser"
 msgstr ""
 
 #: blocks/ecwid-shop-teaser/block.json
