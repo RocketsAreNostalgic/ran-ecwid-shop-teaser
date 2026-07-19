@@ -1,15 +1,35 @@
 <?php
 /**
- * Restore the Release Please version annotation after WP-CLI regenerates the POT.
+ * Normalize generated metadata and restore the Release Please annotation.
+ *
+ * WP-CLI derives the bug-report slug from the checkout directory and writes
+ * environment-specific creation and generator metadata. Remove that source of
+ * drift so regenerating the POT is reproducible across local worktrees and CI.
  *
  * @package RAN_Ecwid_Shop_Teaser
  */
 
-$path    = dirname( __DIR__ ) . '/languages/ran-ecwid-shop-teaser.pot';
+$path     = dirname( __DIR__ ) . '/languages/ran-ecwid-shop-teaser.pot';
 $contents = file_get_contents( $path );
 
 if ( false === $contents ) {
 	fwrite( STDERR, "Could not read the translation template.\n" );
+	exit( 1 );
+}
+
+$contents = preg_replace(
+	'/^"Report-Msgid-Bugs-To:.*\\\\n"$/m',
+	'"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ran-ecwid-shop-teaser\\n"',
+	$contents,
+	1
+);
+$contents = preg_replace( '/^"(?:POT-Creation-Date|X-Generator):.*\\\\n"\R?/m', '', $contents );
+
+if (
+	null === $contents ||
+	! str_contains( $contents, '"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ran-ecwid-shop-teaser\\n"' )
+) {
+	fwrite( STDERR, "Could not normalize the translation template metadata.\n" );
 	exit( 1 );
 }
 

@@ -20,7 +20,9 @@
 		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser"
 	},
 	"devDependencies": {
+		"@wordpress/prettier-config": "^4.50.0",
 		"@wordpress/scripts": "^30.25.0",
+		"prettier": "npm:wp-prettier@^3.0.3",
 		"typescript": "6.0.3"
 	},
 	"scripts": {
