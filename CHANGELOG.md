@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.1.1...v1.2.0) (2026-07-20)
+
+
+### Features
+
+* standardize GitHub-backed WordPress.org releases ([6385410](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/63854103df0c8bc193a1f88c0419066e1fa5aa60))
+
 ## [1.1.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.1.0...v1.1.1) (2026-07-19)
 
 
