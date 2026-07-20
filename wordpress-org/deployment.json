@@ -1,0 +1,11 @@
+{
+	"schemaVersion": 1,
+	"enabled": false,
+	"wordpressOrgSlug": "",
+	"packageSlug": "ran-ecwid-shop-teaser",
+	"mainPluginFile": "ran-ecwid-shop-teaser.php",
+	"buildCommand": "php tools/build-release.php --output \"$ARCHIVE_PATH\"",
+	"verifyCommand": "php tools/build-release.php --check",
+	"archivePath": "dist/ran-ecwid-shop-teaser-{version}.zip",
+	"listingAssetsDirectory": "wordpress-org/assets"
+}
