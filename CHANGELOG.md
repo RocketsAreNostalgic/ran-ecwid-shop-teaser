@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.0...v1.2.1) (2026-07-20)
+
+
+### Miscellaneous Chores
+
+* update pre-release checklist for clarity and formatting ([2fec727](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/2fec72779bfdbce8ab4e93237e4f0f9744177a53))
+
 ## [1.2.0](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.1.1...v1.2.0) (2026-07-20)
 
 

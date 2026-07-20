@@ -3,7 +3,7 @@
 # x-release-please-start-version
 msgid ""
 msgstr ""
-"Project-Id-Version: RAN Ecwid Shop Teaser 1.2.0\n"
+"Project-Id-Version: RAN Ecwid Shop Teaser 1.2.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ran-ecwid-shop-teaser\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
