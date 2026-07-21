@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.1...v1.2.2) (2026-07-21)
+
+
+### Miscellaneous Chores
+
+* ci updates ([f7f34bd](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/f7f34bd09feae394a0dc48ab553244f6440e6878))
+
 ## [1.2.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.0...v1.2.1) (2026-07-20)
 
 
