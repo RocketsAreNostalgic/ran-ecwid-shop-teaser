@@ -19,6 +19,9 @@
 	"bugs": {
 		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser"
 	},
+	"engines": {
+		"node": ">=24.11.0 <25"
+	},
 	"devDependencies": {
 		"@wordpress/prettier-config": "^4.50.0",
 		"@wordpress/scripts": "^30.25.0",
@@ -45,5 +48,8 @@
 		"release:verify": "pnpm archive:check"
 	},
 	"prettier": "@wordpress/prettier-config",
+	"volta": {
+		"node": "24.11.0"
+	},
 	"packageManager": "pnpm@11.5.2"
 }
