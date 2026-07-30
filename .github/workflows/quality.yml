@@ -11,7 +11,7 @@ permissions:
 jobs:
     verify:
         name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}
-        runs-on: ubuntu-latest
+        runs-on: blacksmith-2vcpu-ubuntu-2404
         strategy:
             fail-fast: false
             matrix:
