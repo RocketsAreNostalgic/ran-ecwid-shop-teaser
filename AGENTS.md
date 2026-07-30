@@ -82,10 +82,9 @@ and runtime constant in `ran-ecwid-shop-teaser.php`, `readme.txt` stable tag,
 version. The normal PHP strategy does not update those WordPress-specific
 sources automatically; configure and test explicit extra-file updates.
 
-Do not enable automated releases until the build/quality workflow derives its
-archive filename from the plugin metadata rather than the current hard-coded
-`1.0.0` value. Keep packaging or WordPress.org deployment separate from
-Release Please.
+The build and quality workflows derive archive filenames from the plugin
+metadata and verify that version against the release tag. Keep packaging or
+WordPress.org deployment separate from Release Please.
 
 Treat the existing initial-release preparation commit as the bootstrap
 boundary, preserve version `1.0.0` in the initial manifest, and review the
