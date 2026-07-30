@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.1...v1.2.2) (2026-07-30)
+
+
+### Miscellaneous Chores
+
+* ci updates ([f7f34bd](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/f7f34bd09feae394a0dc48ab553244f6440e6878))
+* **deps:** update WPCS security patch ([28fce8b](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/28fce8b4511738c120b4e1c09fda5699b2ca093b))
+
 ## [1.2.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.0...v1.2.1) (2026-07-20)
 
 
