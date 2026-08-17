@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.3](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.2...v1.2.3) (2026-08-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update PHP_CodeSniffer to 3.13.6 ([d0ac1ef](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/d0ac1efe307a65df0e594c3bc2395b5bf8b8a499))
+* **deps:** update PHP_CodeSniffer to 3.13.6 ([b77b0d5](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/b77b0d564bf79ae01753050e5b29232c719ff879))
+
 ## [1.2.2](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.1...v1.2.2) (2026-07-30)
 
 
