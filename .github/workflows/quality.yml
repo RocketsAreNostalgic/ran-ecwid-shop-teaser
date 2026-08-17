@@ -1,8 +1,17 @@
 name: Quality
+run-name: >-
+    ${{ github.event_name == 'workflow_dispatch' && inputs.release_pr != ''
+        && format('Quality candidate PR #{0} @ {1}', inputs.release_pr, github.sha)
+        || format('Quality {0} @ {1}', github.event_name, github.sha) }}
 
 on:
     pull_request:
     workflow_dispatch:
+        inputs:
+            release_pr:
+                description: Exact open Release Please PR number to validate at this branch head
+                required: false
+                type: string
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -10,6 +19,7 @@ concurrency:
 
 permissions:
     contents: read
+    pull-requests: read
 
 jobs:
     quality:
@@ -33,6 +43,8 @@ jobs:
               id: lifecycle
               shell: bash
               env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RAN_DISPATCH_PR: ${{ inputs.release_pr }}
                   RAN_PR_AUTHOR: ${{ github.event.pull_request.user.login }}
                   RAN_PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
                   RAN_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -43,21 +55,62 @@ jobs:
                   set -euo pipefail
                   lane=full
                   source_commit="$(git rev-parse HEAD)"
+                  pr_author="${RAN_PR_AUTHOR:-}"
+                  pr_base_ref="${RAN_PR_BASE_REF:-}"
+                  pr_base_sha="${RAN_PR_BASE_SHA:-}"
+                  pr_head_ref="${RAN_PR_HEAD_REF:-}"
+                  pr_head_repository="${RAN_PR_HEAD_REPOSITORY:-}"
+                  pr_head_sha="${RAN_PR_HEAD_SHA:-}"
+                  pr_number="${{ github.event.pull_request.number || 0 }}"
 
-                  if [[ "$GITHUB_EVENT_NAME" == pull_request \
+                  if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
+                      [[ "$RAN_DISPATCH_PR" =~ ^[1-9][0-9]*$ ]]
+                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
+                      pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RAN_DISPATCH_PR}")"
+                      jq -e \
+                          --arg bot 'github-actions[bot]' \
+                          --arg head 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
+                          --arg repository "$GITHUB_REPOSITORY" \
+                          --arg sha "$GITHUB_SHA" \
+                          '.state == "open" and .user.login == $bot and .base.ref == "main"
+                            and .head.ref == $head and .head.repo.full_name == $repository
+                            and .head.sha == $sha' <<< "$pr_json" >/dev/null
+                      pr_author="$(jq -er '.user.login' <<< "$pr_json")"
+                      pr_base_ref="$(jq -er '.base.ref' <<< "$pr_json")"
+                      pr_base_sha="$(jq -er '.base.sha' <<< "$pr_json")"
+                      pr_head_ref="$(jq -er '.head.ref' <<< "$pr_json")"
+                      pr_head_repository="$(jq -er '.head.repo.full_name' <<< "$pr_json")"
+                      pr_head_sha="$(jq -er '.head.sha' <<< "$pr_json")"
+                      pr_number="$(jq -er '.number' <<< "$pr_json")"
+                      test "$GITHUB_REF" = "refs/heads/${pr_head_ref}"
+                  fi
+
+                  if [[ ( "$GITHUB_EVENT_NAME" == pull_request || ( "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ) ) \
                       && "$GITHUB_ACTOR" == 'github-actions[bot]' \
-                      && "$RAN_PR_AUTHOR" == 'github-actions[bot]' \
-                      && "$RAN_PR_BASE_REF" == main \
-                      && "$RAN_PR_HEAD_REF" == 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
-                      && "$RAN_PR_HEAD_REPOSITORY" == "$GITHUB_REPOSITORY" ]]; then
-                      bash scripts/validate-release-candidate.sh "$RAN_PR_BASE_SHA" "$RAN_PR_HEAD_SHA"
-                      git checkout --detach "$RAN_PR_HEAD_SHA"
+                      && "$pr_author" == 'github-actions[bot]' \
+                      && "$pr_base_ref" == main \
+                      && "$pr_head_ref" == 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
+                      && "$pr_head_repository" == "$GITHUB_REPOSITORY" ]]; then
+                      if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+                          test "$(git rev-parse HEAD)" = "$pr_head_sha"
+                      fi
+                      bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"
+                      git checkout --detach "$pr_head_sha"
                       lane=release-candidate
-                      source_commit="$RAN_PR_HEAD_SHA"
+                      source_commit="$pr_head_sha"
+                  elif [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
+                      echo '::error::The dispatched Release Please candidate did not satisfy the exact live PR contract.'
+                      exit 1
                   fi
 
                   {
+                      printf 'base-ref=%s\n' "$pr_base_ref"
+                      printf 'base-sha=%s\n' "$pr_base_sha"
+                      printf 'head-ref=%s\n' "$pr_head_ref"
+                      printf 'head-repository=%s\n' "$pr_head_repository"
+                      printf 'head-sha=%s\n' "$pr_head_sha"
                       printf 'lane=%s\n' "$lane"
+                      printf 'pr-number=%s\n' "$pr_number"
                       printf 'source-commit=%s\n' "$source_commit"
                   } >> "$GITHUB_OUTPUT"
 
@@ -104,12 +157,12 @@ jobs:
               shell: bash
               env:
                   RAN_LANE: ${{ steps.lifecycle.outputs.lane }}
-                  RAN_PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
-                  RAN_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-                  RAN_PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-                  RAN_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-                  RAN_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-                  RAN_PR_NUMBER: ${{ github.event.pull_request.number }}
+                  RAN_PR_BASE_REF: ${{ steps.lifecycle.outputs.base-ref }}
+                  RAN_PR_BASE_SHA: ${{ steps.lifecycle.outputs.base-sha }}
+                  RAN_PR_HEAD_REF: ${{ steps.lifecycle.outputs.head-ref }}
+                  RAN_PR_HEAD_REPOSITORY: ${{ steps.lifecycle.outputs.head-repository }}
+                  RAN_PR_HEAD_SHA: ${{ steps.lifecycle.outputs.head-sha }}
+                  RAN_PR_NUMBER: ${{ steps.lifecycle.outputs.pr-number }}
               run: |
                   set -euo pipefail
                   source_commit="$(git rev-parse HEAD)"

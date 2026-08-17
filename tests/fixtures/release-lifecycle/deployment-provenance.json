@@ -1,0 +1,9 @@
+{
+	"sourceCommit": "1111111111111111111111111111111111111111",
+	"sourceTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	"releaseCommit": "2222222222222222222222222222222222222222",
+	"releaseTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	"manifest": {
+		"commit": "1111111111111111111111111111111111111111"
+	}
+}

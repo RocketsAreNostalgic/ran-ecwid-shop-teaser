@@ -1,0 +1,23 @@
+{
+	"release": {
+		"tag_name": "v1.2.3",
+		"draft": false,
+		"target_commitish": "1111111111111111111111111111111111111111",
+		"immutable": true,
+		"assets": [
+			{ "name": "ran-ecwid-shop-teaser-1.2.3.zip" },
+			{ "name": "ran-ecwid-shop-teaser-1.2.3.zip.sha256" },
+			{ "name": "ran-ecwid-shop-teaser-1.2.3.manifest.json" }
+		]
+	},
+	"local_assets": {
+		"ran-ecwid-shop-teaser-1.2.3.zip": "trusted archive bytes",
+		"ran-ecwid-shop-teaser-1.2.3.zip.sha256": "trusted checksum bytes",
+		"ran-ecwid-shop-teaser-1.2.3.manifest.json": "trusted manifest bytes"
+	},
+	"published_assets": {
+		"ran-ecwid-shop-teaser-1.2.3.zip": "poisoned archive bytes",
+		"ran-ecwid-shop-teaser-1.2.3.zip.sha256": "trusted checksum bytes",
+		"ran-ecwid-shop-teaser-1.2.3.manifest.json": "trusted manifest bytes"
+	}
+}

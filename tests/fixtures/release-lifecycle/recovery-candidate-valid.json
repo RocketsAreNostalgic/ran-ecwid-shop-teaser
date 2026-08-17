@@ -1,0 +1,28 @@
+{
+	"pr": {
+		"number": 11,
+		"state": "open",
+		"user": { "login": "github-actions[bot]" },
+		"base": {
+			"ref": "main",
+			"sha": "2222222222222222222222222222222222222222"
+		},
+		"head": {
+			"ref": "release-please--branches--main--components--ran-ecwid-shop-teaser",
+			"sha": "1111111111111111111111111111111111111111",
+			"repo": {
+				"full_name": "RocketsAreNostalgic/ran-ecwid-shop-teaser"
+			}
+		}
+	},
+	"branchSha": "1111111111111111111111111111111111111111",
+	"commit": {
+		"sha": "1111111111111111111111111111111111111111",
+		"author": { "login": "github-actions[bot]" },
+		"committer": { "login": "web-flow" },
+		"commit": {
+			"verification": { "verified": true, "reason": "valid" }
+		},
+		"parents": [ { "sha": "2222222222222222222222222222222222222222" } ]
+	}
+}
