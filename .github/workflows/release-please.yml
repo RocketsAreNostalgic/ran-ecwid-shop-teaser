@@ -1,11 +1,7 @@
 name: Release Please
 
 on:
-    workflow_run:
-        workflows:
-            - Quality
-        types:
-            - completed
+    push:
         branches:
             - main
     workflow_dispatch:
@@ -34,106 +30,346 @@ concurrency:
 jobs:
     release-please:
         name: Release Please
-        if: >-
-            ${{
-                github.event_name == 'workflow_run'
-                && github.event.workflow_run.event == 'push'
-                && github.event.workflow_run.conclusion == 'success'
-                && github.event.workflow_run.head_branch == 'main'
-                && github.event.workflow_run.head_repository.full_name == github.repository
-            }}
+        if: github.event_name == 'push'
         runs-on: blacksmith-2vcpu-ubuntu-2404
         permissions:
-            actions: read
+            actions: write
             contents: write
             issues: write
             pull-requests: write
         outputs:
             deployment_enabled: ${{ steps.contract.outputs.enabled }}
             published_now: ${{ steps.publish.outputs.published-now }}
-            tag_name: ${{ steps.release-state.outputs.tag-name }}
+            release_commit: ${{ steps.evidence.outputs.release-commit }}
+            release_tree: ${{ steps.evidence.outputs.release-tree }}
+            source_commit: ${{ steps.evidence.outputs.source-commit }}
+            source_tree: ${{ steps.evidence.outputs.source-tree }}
+            tag_name: ${{ steps.evidence.outputs.tag-name }}
         steps:
-            - name: Check out the exact successful Quality commit
+            - name: Check out exact main commit
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
                   persist-credentials: false
-                  ref: ${{ github.event.workflow_run.head_sha }}
 
-            - name: Prove an exact merged Release Please candidate before publication
-              id: release-state
+            - name: Prove protected merge and exact successful PR Quality
+              id: lifecycle
+              shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RAN_QUALITY_COMMIT: ${{ github.event.workflow_run.head_sha }}
               run: |
                   set -euo pipefail
-                  test "$(git rev-parse HEAD)" = "$RAN_QUALITY_COMMIT"
+                  test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
-                  if git diff --quiet "${RAN_QUALITY_COMMIT}^1" "$RAN_QUALITY_COMMIT" -- .release-please-manifest.json; then
-                      echo 'release-required=false' >> "$GITHUB_OUTPUT"
-                      exit 0
-                  fi
+                  effective_rules="$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main")"
+                  jq -e '
+                      any(.[]; .type == "pull_request")
+                      and any(.[]; .type == "required_linear_history")
+                      and any(.[]; .type == "required_status_checks")
+                      and any(.[]; .type == "non_fast_forward")
+                  ' <<< "$effective_rules" >/dev/null
+                  ruleset_id="$(jq -er '[.[] | select(.type == "pull_request") | .ruleset_id] | unique | if length == 1 then .[0] else error("Expected one pull-request ruleset.") end' <<< "$effective_rules")"
+                  ruleset="$(gh api "repos/${GITHUB_REPOSITORY}/rulesets/${ruleset_id}")"
+                  jq -e '
+                      .enforcement == "active"
+                      and has("bypass_actors")
+                      and (.bypass_actors | type == "array" and length == 0)
+                      and has("current_user_can_bypass")
+                      and .current_user_can_bypass == "never"
+                      and any(.rules[]; .type == "required_linear_history")
+                      and any(.rules[]; .type == "pull_request" and (.parameters.allowed_merge_methods | sort) == ["rebase", "squash"])
+                      and any(.rules[]; .type == "required_status_checks"
+                          and .parameters.strict_required_status_checks_policy == true
+                          and ([.parameters.required_status_checks[].context] | index("Quality and release artifact") != null)
+                          and ([.parameters.required_status_checks[].context] | index("PHP 8.3 / WordPress latest") != null))
+                  ' <<< "$ruleset" >/dev/null
 
-                  release_commit="$(git rev-parse "${RAN_QUALITY_COMMIT}^2")"
-                  test "$(git log -1 --format=%H "$RAN_QUALITY_COMMIT" -- .release-please-manifest.json)" = "$release_commit"
-                  test "$(git rev-parse "${RAN_QUALITY_COMMIT}^{tree}")" = "$(git rev-parse "${release_commit}^{tree}")"
-                  version="$(jq -er '."." | select(type == "string")' .release-please-manifest.json)"
-                  tag="v${version}"
-                  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
-
-                  release_pr="$(
-                      gh api -H 'Accept: application/vnd.github+json' \
-                          "repos/${GITHUB_REPOSITORY}/commits/${release_commit}/pulls" \
+                  pr_json="$(
+                      gh api --paginate --slurp -H 'Accept: application/vnd.github+json' \
+                          "repos/${GITHUB_REPOSITORY}/pulls?state=closed&base=main&per_page=100" \
                       | jq -cer \
                           --arg base main \
-                          --arg bot 'github-actions[bot]' \
-                          --arg head 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
-                          --arg merge "$RAN_QUALITY_COMMIT" \
-                          --arg release "$release_commit" \
+                          --arg merge "$GITHUB_SHA" \
                           --arg repository "$GITHUB_REPOSITORY" \
-                          '[.[] | select(.merged_at != null and .base.ref == $base and .head.sha == $release and .merge_commit_sha == $merge and .head.ref == $head and .head.repo.full_name == $repository and .user.login == $bot)]
-                          | if length == 1 then .[0] else error("Expected exactly one merged Release Please PR for the Quality commit.") end'
+                          'add | [.[] | select(
+                              .merged_at != null
+                              and .base.ref == $base
+                              and .head.repo.full_name == $repository
+                              and .merge_commit_sha == $merge
+                          )]
+                          | if length == 1 then .[0] else error("Expected exactly one merged pull request for main.") end'
                   )"
-                  release_pr_number="$(jq -er '.number' <<< "$release_pr")"
+                  pr_number="$(jq -er '.number' <<< "$pr_json")"
+                  base_sha="$(jq -er '.base.sha' <<< "$pr_json")"
+                  head_ref="$(jq -er '.head.ref' <<< "$pr_json")"
+                  head_sha="$(jq -er '.head.sha' <<< "$pr_json")"
+                  head_repository="$(jq -er '.head.repo.full_name' <<< "$pr_json")"
+                  main_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${GITHUB_SHA}" --jq '.tree.sha')"
+                  head_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${head_sha}" --jq '.tree.sha')"
+
+                  lane=full
+                  if jq -e \
+                      --arg bot 'github-actions[bot]' \
+                      --arg head 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
+                      '.user.login == $bot and .head.ref == $head' <<< "$pr_json" >/dev/null; then
+                      lane=release-candidate
+                      test "$head_tree" = "$main_tree"
+                  fi
+
+                  files_json="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100")"
+                  for path in \
+                      .github/workflows/quality.yml \
+                      .github/workflows/release-please.yml \
+                      scripts/create-release-assets.sh \
+                      scripts/validate-release-candidate.sh \
+                      tests/release-candidate-contract.sh \
+                      tests/release-lifecycle-fixtures.sh \
+                      tests/release-workflow-contract.sh \
+                      tools/build-release.php \
+                      wordpress-org/deployment.json; do
+                      if jq -e --arg path "$path" 'add | any(.filename == $path)' <<< "$files_json" >/dev/null; then
+                          echo "::error::Trusted lifecycle path changed in PR: ${path}"
+                          exit 1
+                      fi
+                  done
+                  if jq -e 'add | any(.filename | startswith("tests/fixtures/release-lifecycle/"))' <<< "$files_json" >/dev/null; then
+                      echo '::error::Trusted release lifecycle fixtures changed in PR.'
+                      exit 1
+                  fi
+                  if [[ "$lane" == full ]]; then
+                      for path in composer.json composer.lock package.json pnpm-lock.yaml; do
+                          if jq -e --arg path "$path" 'add | any(.filename == $path)' <<< "$files_json" >/dev/null; then
+                              echo "::error::Executable dependency contract changed in PR: ${path}"
+                              exit 1
+                          fi
+                      done
+                  fi
+
+                  workflow_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml" --jq '.id')"
+                  runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?head_sha=${head_sha}&status=completed&per_page=100")"
+                  dispatch_title="Quality candidate PR #${pr_number} @ ${head_sha}"
+                  run="$(
+                      jq -cer \
+                          --arg bot 'github-actions[bot]' \
+                          --arg head_ref "$head_ref" \
+                          --arg head_repository "$head_repository" \
+                          --arg head_sha "$head_sha" \
+                          --arg lane "$lane" \
+                          --arg dispatch_title "$dispatch_title" \
+                          --argjson workflow_id "$workflow_id" \
+                          '[.workflow_runs[] | select(
+                              .workflow_id == $workflow_id
+                              and .path == ".github/workflows/quality.yml"
+                              and (($lane == "release-candidate" and (.event == "pull_request"
+                                      or (.event == "workflow_dispatch" and .display_title == $dispatch_title)))
+                                  or ($lane == "full" and .event == "pull_request"))
+                              and .conclusion == "success"
+                              and .head_branch == $head_ref
+                              and .head_repository.full_name == $head_repository
+                              and .head_sha == $head_sha
+                              and ($lane != "release-candidate" or .actor.login == $bot)
+                          )]
+                          | sort_by(.id, .run_attempt)
+                          | if length > 0 then last else error("No successful exact Quality run exists.") end' \
+                          <<< "$runs"
+                  )"
+                  run_id="$(jq -er '.id' <<< "$run")"
+                  run_attempt="$(jq -er '.run_attempt' <<< "$run")"
+                  run_event="$(jq -er '.event' <<< "$run")"
+                  attempt="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/attempts/${run_attempt}")"
+                  jq -e \
+                      --arg bot 'github-actions[bot]' \
+                      --arg head_ref "$head_ref" \
+                      --arg head_repository "$head_repository" \
+                      --arg head_sha "$head_sha" \
+                      --arg lane "$lane" \
+                      --arg dispatch_title "$dispatch_title" \
+                      --arg run_event "$run_event" \
+                      --argjson attempt "$run_attempt" \
+                      --argjson run_id "$run_id" \
+                      --argjson workflow_id "$workflow_id" \
+                      '.id == $run_id and .run_attempt == $attempt and .workflow_id == $workflow_id
+                        and .path == ".github/workflows/quality.yml" and .event == $run_event
+                        and (($lane == "release-candidate" and ($run_event == "pull_request"
+                                or ($run_event == "workflow_dispatch" and .display_title == $dispatch_title)))
+                            or ($lane == "full" and $run_event == "pull_request"))
+                        and .status == "completed" and .conclusion == "success"
+                        and .head_branch == $head_ref and .head_repository.full_name == $head_repository
+                        and .head_sha == $head_sha and .repository.full_name == $head_repository
+                        and (.triggering_actor.login | type == "string" and length > 0)
+                        and ($lane != "release-candidate" or .actor.login == $bot)' \
+                      <<< "$attempt" >/dev/null
+
+                  {
+                      printf 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s\n' "$run_id" "$run_attempt"
+                      printf 'base-sha=%s\n' "$base_sha"
+                      printf 'head-ref=%s\n' "$head_ref"
+                      printf 'head-repository=%s\n' "$head_repository"
+                      printf 'head-sha=%s\n' "$head_sha"
+                      printf 'head-tree=%s\n' "$head_tree"
+                      printf 'lane=%s\n' "$lane"
+                      printf 'main-tree=%s\n' "$main_tree"
+                      printf 'pr-number=%s\n' "$pr_number"
+                      printf 'run-attempt=%s\n' "$run_attempt"
+                      printf 'run-event=%s\n' "$run_event"
+                      printf 'run-id=%s\n' "$run_id"
+                      printf 'workflow-id=%s\n' "$workflow_id"
+                  } >> "$GITHUB_OUTPUT"
+
+            - name: Download exact PR Quality evidence
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: ${{ steps.lifecycle.outputs.artifact-name }}
+                  path: dist
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  repository: ${{ github.repository }}
+                  run-id: ${{ steps.lifecycle.outputs.run-id }}
+
+            - name: Verify tested tree, workflow, and release evidence
+              id: evidence
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RAN_BASE_SHA: ${{ steps.lifecycle.outputs.base-sha }}
+                  RAN_HEAD_REF: ${{ steps.lifecycle.outputs.head-ref }}
+                  RAN_HEAD_REPOSITORY: ${{ steps.lifecycle.outputs.head-repository }}
+                  RAN_HEAD_SHA: ${{ steps.lifecycle.outputs.head-sha }}
+                  RAN_HEAD_TREE: ${{ steps.lifecycle.outputs.head-tree }}
+                  RAN_LANE: ${{ steps.lifecycle.outputs.lane }}
+                  RAN_MAIN_TREE: ${{ steps.lifecycle.outputs.main-tree }}
+                  RAN_PR_NUMBER: ${{ steps.lifecycle.outputs.pr-number }}
+                  RAN_RUN_ATTEMPT: ${{ steps.lifecycle.outputs.run-attempt }}
+                  RAN_RUN_EVENT: ${{ steps.lifecycle.outputs.run-event }}
+                  RAN_RUN_ID: ${{ steps.lifecycle.outputs.run-id }}
+              run: |
+                  set -euo pipefail
+                  metadata='dist/ran-ecwid-shop-teaser-ci-release.json'
+                  test -f "$metadata"
+                  workflow_blob="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/quality.yml?ref=${RAN_BASE_SHA}" --jq '.sha')"
+                  if [[ "$RAN_RUN_EVENT" == workflow_dispatch ]]; then
+                      expected_ref="${GITHUB_REPOSITORY}/.github/workflows/quality.yml@refs/heads/${RAN_HEAD_REF}"
+                  else
+                      expected_ref="${GITHUB_REPOSITORY}/.github/workflows/quality.yml@refs/pull/${RAN_PR_NUMBER}/merge"
+                  fi
+
+                  jq -e \
+                      --arg base_sha "$RAN_BASE_SHA" \
+                      --arg head_ref "$RAN_HEAD_REF" \
+                      --arg head_repository "$RAN_HEAD_REPOSITORY" \
+                      --arg head_sha "$RAN_HEAD_SHA" \
+                      --arg head_tree "$RAN_HEAD_TREE" \
+                      --arg lane "$RAN_LANE" \
+                      --arg main_tree "$RAN_MAIN_TREE" \
+                      --arg run_event "$RAN_RUN_EVENT" \
+                      --arg workflow_blob "$workflow_blob" \
+                      --arg workflow_ref "$expected_ref" \
+                      --argjson pr_number "$RAN_PR_NUMBER" \
+                      --argjson run_attempt "$RAN_RUN_ATTEMPT" \
+                      --argjson run_id "$RAN_RUN_ID" \
+                      '.schema == "ran-ecwid-shop-teaser-ci-release" and .schemaVersion == 2
+                        and .lane == $lane and .sourceTree == $main_tree and .testedTree == $main_tree
+                        and (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"))
+                        and (.sha256 | type == "string" and test("^[0-9a-f]{64}$"))
+                        and .run.id == $run_id and .run.attempt == $run_attempt and .run.event == $run_event
+                        and .run.workflowRef == $workflow_ref and .run.workflowBlob == $workflow_blob
+                        and (.run.workflowSha | type == "string" and test("^[0-9a-f]{40}$"))
+                        and .pullRequest.number == $pr_number and .pullRequest.baseRef == "main"
+                        and .pullRequest.baseSha == $base_sha and .pullRequest.headRef == $head_ref
+                        and .pullRequest.headRepository == $head_repository and .pullRequest.headSha == $head_sha
+                        and (
+                          ($lane == "release-candidate" and .sourceCommit == $head_sha and .testedCommit == $head_sha and .sourceTree == $head_tree)
+                          or ($lane == "full" and .testedCommit == .qualityCommit)
+                        )' \
+                      "$metadata" >/dev/null
+
+                  version="$(jq -er '.version' "$metadata")"
+                  source_commit="$(jq -er '.sourceCommit' "$metadata")"
+                  archive="dist/ran-ecwid-shop-teaser-${version}.zip"
+                  checksum="${archive}.sha256"
+                  manifest="dist/ran-ecwid-shop-teaser-${version}.manifest.json"
+                  archive_sha256="$(jq -er '.sha256' "$metadata")"
+                  test -f "$archive" && test -f "$checksum" && test -f "$manifest"
+                  (cd dist && sha256sum --check --strict "$(basename "$checksum")")
+                  unzip -tqq "$archive"
+                  jq -e --arg archive "$(basename "$archive")" --arg commit "$source_commit" --arg sha256 "$archive_sha256" --arg tag "v${version}" --arg version "$version" \
+                      '.schemaVersion == 1 and .archive == $archive and .commit == $commit and .sha256 == $sha256 and .tag == $tag and .version == $version' \
+                      "$manifest" >/dev/null
+
+                  current_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+                  test "$current_main" = "$GITHUB_SHA"
+                  release_required=false
+                  if [[ "$RAN_LANE" == release-candidate ]]; then
+                      git fetch --no-tags origin "refs/pull/${RAN_PR_NUMBER}/head"
+                      release_head="$(git rev-parse FETCH_HEAD)"
+                      test "$release_head" = "$RAN_HEAD_SHA"
+                      bash scripts/validate-release-candidate.sh "$RAN_BASE_SHA" "$release_head"
+                      version="$(git show "${release_head}:.release-please-manifest.json" | jq -er '."."')"
+                      test "$version" = "$(jq -er '.version' "$metadata")"
+                      release_required=true
+                  fi
+
+                  {
+                      printf 'release-please-required=true\n'
+                      printf 'release-commit=%s\n' "$GITHUB_SHA"
+                      printf 'release-tree=%s\n' "$RAN_MAIN_TREE"
+                      printf 'release-required=%s\n' "$release_required"
+                      printf 'source-commit=%s\n' "$source_commit"
+                      printf 'source-tree=%s\n' "$(jq -er '.sourceTree' "$metadata")"
+                      printf 'tag-name=v%s\n' "$version"
+                  } >> "$GITHUB_OUTPUT"
+                  {
+                      printf 'RAN_RELEASE_COMMIT=%s\n' "$GITHUB_SHA"
+                      printf 'RAN_RELEASE_PR_NUMBER=%s\n' "$RAN_PR_NUMBER"
+                      printf 'RAN_RELEASE_SOURCE_COMMIT=%s\n' "$source_commit"
+                      printf 'RAN_RELEASE_TAG=v%s\n' "$version"
+                      printf 'RAN_RELEASE_VERSION=%s\n' "$version"
+                  } >> "$GITHUB_ENV"
+
+            - name: Inspect existing release state
+              id: state
+              if: steps.evidence.outputs.release-required == 'true'
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  release_pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RAN_RELEASE_PR_NUMBER}")"
                   pending="$(jq -r 'any(.labels[]?; .name == "autorelease: pending")' <<< "$release_pr")"
                   tagged="$(jq -r 'any(.labels[]?; .name == "autorelease: tagged")' <<< "$release_pr")"
-
-                  release_pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
-                  if release_json="$(jq -cer --arg tag "$tag" 'add | .[] | select(.tag_name == $tag)' <<< "$release_pages")"; then
-                      test "$(jq -er '.target_commitish' <<< "$release_json")" = "$RAN_QUALITY_COMMIT"
-                      if [[ "$(jq -er '.draft' <<< "$release_json")" == false ]]; then
-                          state=published
-                          release_pending=false
-                      else
-                          state=draft
-                          release_pending=true
-                      fi
+                  if tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}" 2>/dev/null)"; then
+                      test "$(jq -er '.ref' <<< "$tag_ref")" = "refs/tags/${RAN_RELEASE_TAG}"
+                      tag_type="$(jq -er '.object.type' <<< "$tag_ref")"
+                      tag_commit="$(jq -er '.object.sha' <<< "$tag_ref")"
+                      peel_count=0
+                      while [[ "$tag_type" == tag ]]; do
+                          ((peel_count += 1))
+                          test "$peel_count" -le 8
+                          tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_commit}")"
+                          if [[ "$peel_count" -eq 1 ]]; then
+                              test "$(jq -er '.tag' <<< "$tag_object")" = "$RAN_RELEASE_TAG"
+                          fi
+                          tag_type="$(jq -er '.object.type' <<< "$tag_object")"
+                          tag_commit="$(jq -er '.object.sha' <<< "$tag_object")"
+                      done
+                      test "$tag_type" = commit
+                      test "$tag_commit" = "$RAN_RELEASE_COMMIT"
+                  fi
+                  if release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_RELEASE_TAG}" 2>/dev/null)"; then
+                      test "$(jq -er '.target_commitish' <<< "$release_json")" = "$RAN_RELEASE_COMMIT"
+                      if [[ "$(jq -er '.draft' <<< "$release_json")" == false ]]; then state=published; release_pending=false; else state=draft; release_pending=true; fi
                   else
                       state=absent
                       release_pending=true
                   fi
-
-                  if [[ "$release_pending" == true ]]; then
-                      test "$pending" = true
-                      test "$tagged" = false
-                  elif [[ "$pending" != true && "$tagged" != true ]]; then
-                      echo '::error::The published release PR has neither the pending nor tagged Release Please label.'
-                      exit 1
-                  fi
-
-                  {
-                      printf 'release-required=true\n'
-                      printf 'tag-name=%s\n' "$tag"
-                  } >> "$GITHUB_OUTPUT"
+                  if [[ "$release_pending" == true ]]; then test "$pending" = true && test "$tagged" = false; fi
                   {
                       printf 'RAN_RELEASE_PENDING=%s\n' "$release_pending"
-                      printf 'RAN_RELEASE_PR_NUMBER=%s\n' "$release_pr_number"
                       printf 'RAN_RELEASE_STATE=%s\n' "$state"
-                      printf 'RAN_RELEASE_TAG=%s\n' "$tag"
-                      printf 'RAN_RELEASE_VERSION=%s\n' "$version"
                   } >> "$GITHUB_ENV"
 
-            - name: Open or update the release pull request
+            - name: Open or update Release Please pull request
+              id: release_please
+              if: steps.evidence.outputs.release-please-required == 'true'
               uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
@@ -141,70 +377,222 @@ jobs:
                   manifest-file: .release-please-manifest.json
                   skip-github-release: true
 
-            - name: Download the exact assets tested by Quality
-              if: steps.release-state.outputs.release-required == 'true'
-              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-              with:
-                  name: ran-ecwid-shop-teaser-release-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
-                  path: dist
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
-                  repository: ${{ github.repository }}
-                  run-id: ${{ github.event.workflow_run.id }}
-
-            - name: Verify the downloaded release identity
-              if: steps.release-state.outputs.release-required == 'true'
-              env:
-                  RAN_QUALITY_COMMIT: ${{ github.event.workflow_run.head_sha }}
-              run: |
-                  set -euo pipefail
-                  archive="dist/ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip"
-                  checksum="${archive}.sha256"
-                  manifest="dist/ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json"
-                  jq -e --arg archive "$(basename "$archive")" --arg commit "$RAN_QUALITY_COMMIT" --arg tag "$RAN_RELEASE_TAG" --arg version "$RAN_RELEASE_VERSION" \
-                      '.archive == $archive and .commit == $commit and .tag == $tag and .version == $version and (.sha256 | test("^[0-9a-f]{64}$"))' "$manifest" >/dev/null
-                  (cd dist && sha256sum --check --strict "$(basename "$checksum")")
-                  unzip -tqq "$archive"
-
-            - name: Create a draft, attach the tested assets, and publish
-              id: publish
-              if: steps.release-state.outputs.release-required == 'true'
+            - name: Recover and dispatch exact secretless candidate Quality
+              if: steps.evidence.outputs.release-please-required == 'true'
+              shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RAN_QUALITY_COMMIT: ${{ github.event.workflow_run.head_sha }}
+                  RAN_RELEASE_PR: ${{ steps.release_please.outputs.pr }}
+                  RAN_RELEASE_PRS_CREATED: ${{ steps.release_please.outputs.prs_created }}
+              run: |
+                  set -euo pipefail
+                  expected_head='release-please--branches--main--components--ran-ecwid-shop-teaser'
+                  open_prs="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=main&per_page=100")"
+                  candidate_prs="$(jq -cer \
+                      --arg head "$expected_head" \
+                      --arg repository "$GITHUB_REPOSITORY" \
+                      'add | [.[] | select(
+                          .base.ref == "main"
+                          and .head.ref == $head
+                          and .head.repo.full_name == $repository
+                      )]' <<< "$open_prs")"
+                  candidate_count="$(jq -er 'length' <<< "$candidate_prs")"
+                  if [[ "$candidate_count" == 0 ]]; then
+                      test "${RAN_RELEASE_PRS_CREATED:-false}" != true
+                      test -z "${RAN_RELEASE_PR:-}"
+                      exit 0
+                  fi
+                  test "$candidate_count" == 1
+                  pr_json="$(jq -cer '.[0]' <<< "$candidate_prs")"
+                  pr_number="$(jq -er '.number' <<< "$pr_json")"
+                  base_sha="$(jq -er '.base.sha' <<< "$pr_json")"
+                  head_sha="$(jq -er '.head.sha' <<< "$pr_json")"
+                  jq -e \
+                      --arg bot 'github-actions[bot]' \
+                      --arg head "$expected_head" \
+                      --arg repository "$GITHUB_REPOSITORY" \
+                      --arg sha "$GITHUB_SHA" \
+                      '.state == "open" and .user.login == $bot
+                        and .base.ref == "main" and .base.sha == $sha
+                        and .head.ref == $head
+                        and .head.repo.full_name == $repository' <<< "$pr_json" >/dev/null
+
+                  if [[ "${RAN_RELEASE_PRS_CREATED:-false}" == true ]]; then
+                      jq -e \
+                          --arg base main \
+                          --arg head "$expected_head" \
+                          --argjson number "$pr_number" \
+                          '.number == $number and .baseBranchName == $base and .headBranchName == $head' \
+                          <<< "$RAN_RELEASE_PR" >/dev/null
+                  else
+                      test -z "${RAN_RELEASE_PR:-}"
+                  fi
+
+                  current_head="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${expected_head}" --jq '.object.sha')"
+                  test "$current_head" = "$head_sha"
+                  commit_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}")"
+                  jq -e \
+                      --arg base_sha "$base_sha" \
+                      --arg bot 'github-actions[bot]' \
+                      --arg committer web-flow \
+                      --arg head_sha "$head_sha" \
+                      '.sha == $head_sha
+                        and .author.login == $bot
+                        and .committer.login == $committer
+                        and .commit.verification.verified == true
+                        and .commit.verification.reason == "valid"
+                        and (.parents | length) == 1
+                        and .parents[0].sha == $base_sha' <<< "$commit_json" >/dev/null
+
+                  git fetch --no-tags origin "refs/pull/${pr_number}/head"
+                  test "$(git rev-parse FETCH_HEAD)" = "$head_sha"
+                  bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"
+
+                  workflow_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml" --jq '.id')"
+                  runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?event=workflow_dispatch&head_sha=${head_sha}&per_page=100")"
+                  dispatch_title="Quality candidate PR #${pr_number} @ ${head_sha}"
+                  suppress_dispatch="$(jq -r \
+                      --arg bot 'github-actions[bot]' \
+                      --arg head_ref "$expected_head" \
+                      --arg head_repository "$GITHUB_REPOSITORY" \
+                      --arg head_sha "$head_sha" \
+                      --arg dispatch_title "$dispatch_title" \
+                      --argjson workflow_id "$workflow_id" \
+                      'any(.workflow_runs[];
+                          .workflow_id == $workflow_id
+                          and .path == ".github/workflows/quality.yml"
+                          and .event == "workflow_dispatch"
+                          and .display_title == $dispatch_title
+                          and .head_branch == $head_ref
+                          and .head_repository.full_name == $head_repository
+                          and .head_sha == $head_sha
+                          and .actor.login == $bot
+                          and (
+                              (.status == "completed" and .conclusion == "success")
+                              or (.status == "requested" or .status == "queued" or .status == "pending"
+                                  or .status == "waiting" or .status == "in_progress")
+                          )
+                      )' <<< "$runs")"
+                  if [[ "$suppress_dispatch" == true ]]; then
+                      exit 0
+                  fi
+
+                  jq -nc --arg ref "$expected_head" --arg release_pr "$pr_number" \
+                      '{ref: $ref, inputs: {release_pr: $release_pr}}' \
+                      | gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml/dispatches" --input - >/dev/null
+
+            - name: Create draft, attach exact tested assets, and publish
+              id: publish
+              if: steps.evidence.outputs.release-required == 'true'
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
                   echo 'published-now=false' >> "$GITHUB_OUTPUT"
                   if [[ "$RAN_RELEASE_PENDING" != true ]]; then exit 0; fi
+                  if tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}" 2>/dev/null)"; then
+                      test "$(jq -er '.ref' <<< "$tag_ref")" = "refs/tags/${RAN_RELEASE_TAG}"
+                      tag_type="$(jq -er '.object.type' <<< "$tag_ref")"
+                      tag_commit="$(jq -er '.object.sha' <<< "$tag_ref")"
+                      peel_count=0
+                      while [[ "$tag_type" == tag ]]; do
+                          ((peel_count += 1))
+                          test "$peel_count" -le 8
+                          tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_commit}")"
+                          if [[ "$peel_count" -eq 1 ]]; then
+                              test "$(jq -er '.tag' <<< "$tag_object")" = "$RAN_RELEASE_TAG"
+                          fi
+                          tag_type="$(jq -er '.object.type' <<< "$tag_object")"
+                          tag_commit="$(jq -er '.object.sha' <<< "$tag_object")"
+                      done
+                      test "$tag_type" = commit
+                      test "$tag_commit" = "$RAN_RELEASE_COMMIT"
+                  else
+                      jq -nc --arg ref "refs/tags/${RAN_RELEASE_TAG}" --arg sha "$RAN_RELEASE_COMMIT" '{ref: $ref, sha: $sha}' \
+                          | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" --input - >/dev/null
+                  fi
                   if [[ "$RAN_RELEASE_STATE" == absent ]]; then
                       prerelease=()
                       [[ "$RAN_RELEASE_VERSION" == *-* ]] && prerelease=(--prerelease)
-                      gh release create "$RAN_RELEASE_TAG" --draft --target "$RAN_QUALITY_COMMIT" --title "$RAN_RELEASE_TAG" --generate-notes "${prerelease[@]}"
+                      gh release create "$RAN_RELEASE_TAG" --verify-tag --draft --target "$RAN_RELEASE_COMMIT" --title "$RAN_RELEASE_TAG" --generate-notes "${prerelease[@]}"
                   fi
                   gh release upload "$RAN_RELEASE_TAG" \
                       "dist/ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" \
                       "dist/ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" \
                       "dist/ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json" \
                       --clobber --repo "$GITHUB_REPOSITORY"
+                  draft_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_RELEASE_TAG}")"
+                  expected="$(printf '%s\n' "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json" "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" | jq -Rsc 'split("\n") | map(select(length > 0)) | sort')"
+                  jq -e --arg commit "$RAN_RELEASE_COMMIT" --arg tag "$RAN_RELEASE_TAG" --argjson expected "$expected" \
+                      '.tag_name == $tag and .draft == true and .target_commitish == $commit
+                        and ([.assets[].name] | sort) == $expected' <<< "$draft_json" >/dev/null
+                  rm -rf prepublish-dist
+                  mkdir prepublish-dist
+                  gh release download "$RAN_RELEASE_TAG" \
+                      --pattern "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" \
+                      --pattern "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" \
+                      --pattern "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json" \
+                      --dir prepublish-dist --repo "$GITHUB_REPOSITORY"
+                  for name in \
+                      "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" \
+                      "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" \
+                      "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json"; do
+                      test "$(sha256sum "dist/${name}" | cut -d ' ' -f 1)" = "$(sha256sum "prepublish-dist/${name}" | cut -d ' ' -f 1)"
+                      cmp --silent "dist/${name}" "prepublish-dist/${name}"
+                  done
+                  (cd prepublish-dist && sha256sum --check --strict "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256")
                   latest=(--latest)
                   [[ "$RAN_RELEASE_VERSION" == *-* ]] && latest=(--prerelease)
                   gh release edit "$RAN_RELEASE_TAG" --draft=false "${latest[@]}"
                   echo 'published-now=true' >> "$GITHUB_OUTPUT"
 
-            - name: Read back the published release and reconcile its exact PR
-              if: steps.release-state.outputs.release-required == 'true'
+            - name: Read back published release and reconcile exact PR
+              if: steps.evidence.outputs.release-required == 'true'
+              shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RAN_QUALITY_COMMIT: ${{ github.event.workflow_run.head_sha }}
               run: |
                   set -euo pipefail
                   release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_RELEASE_TAG}")"
-                  jq -e --arg tag "$RAN_RELEASE_TAG" --arg commit "$RAN_QUALITY_COMMIT" \
-                      '.tag_name == $tag and .draft == false and .target_commitish == $commit' <<< "$release_json" >/dev/null
+                  jq -e --arg tag "$RAN_RELEASE_TAG" --arg commit "$RAN_RELEASE_COMMIT" \
+                      '.tag_name == $tag and .draft == false and .target_commitish == $commit
+                        and ((has("immutable") | not) or (.immutable | type == "boolean"))' <<< "$release_json" >/dev/null
                   tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}")"
-                  jq -e --arg commit "$RAN_QUALITY_COMMIT" '.object.type == "commit" and .object.sha == $commit' <<< "$tag_ref" >/dev/null
+                  test "$(jq -er '.ref' <<< "$tag_ref")" = "refs/tags/${RAN_RELEASE_TAG}"
+                  tag_type="$(jq -er '.object.type' <<< "$tag_ref")"
+                  tag_commit="$(jq -er '.object.sha' <<< "$tag_ref")"
+                  peel_count=0
+                  while [[ "$tag_type" == tag ]]; do
+                      ((peel_count += 1))
+                      test "$peel_count" -le 8
+                      tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_commit}")"
+                      if [[ "$peel_count" -eq 1 ]]; then
+                          test "$(jq -er '.tag' <<< "$tag_object")" = "$RAN_RELEASE_TAG"
+                      fi
+                      tag_type="$(jq -er '.object.type' <<< "$tag_object")"
+                      tag_commit="$(jq -er '.object.sha' <<< "$tag_object")"
+                  done
+                  test "$tag_type" = commit
+                  test "$tag_commit" = "$RAN_RELEASE_COMMIT"
                   expected="$(printf '%s\n' "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json" "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" | jq -Rsc 'split("\n") | map(select(length > 0)) | sort')"
                   assets="$(jq -c '[.assets[].name] | sort' <<< "$release_json")"
                   test "$assets" = "$expected"
+                  rm -rf published-dist
+                  mkdir published-dist
+                  gh release download "$RAN_RELEASE_TAG" \
+                      --pattern "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" \
+                      --pattern "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" \
+                      --pattern "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json" \
+                      --dir published-dist --repo "$GITHUB_REPOSITORY"
+                  for name in \
+                      "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip" \
+                      "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256" \
+                      "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.manifest.json"; do
+                      test "$(sha256sum "dist/${name}" | cut -d ' ' -f 1)" = "$(sha256sum "published-dist/${name}" | cut -d ' ' -f 1)"
+                      cmp --silent "dist/${name}" "published-dist/${name}"
+                  done
+                  (cd published-dist && sha256sum --check --strict "ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip.sha256")
                   labels="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${RAN_RELEASE_PR_NUMBER}" --jq '[.labels[].name]')"
                   if ! jq -e 'index("autorelease: tagged") != null' <<< "$labels" >/dev/null; then
                       jq -nc '{labels: ["autorelease: tagged"]}' | gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${RAN_RELEASE_PR_NUMBER}/labels" --input - >/dev/null
@@ -215,24 +603,70 @@ jobs:
 
             - name: Read deployment contract
               id: contract
-              if: steps.release-state.outputs.release-required == 'true'
+              if: steps.evidence.outputs.release-required == 'true'
               run: echo "enabled=$(jq -r '.enabled' wordpress-org/deployment.json)" >> "$GITHUB_OUTPUT"
 
     package-release:
         name: Manually rebuild an existing release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         runs-on: blacksmith-2vcpu-ubuntu-2404
         permissions:
-            contents: write
+            contents: read
         outputs:
-            tag_name: ${{ steps.release.outputs.tag_name }}
+            artifact_name: ${{ steps.resolve.outputs.artifact-name }}
+            release_commit: ${{ steps.resolve.outputs.release-commit }}
+            release_tree: ${{ steps.resolve.outputs.release-tree }}
+            source_commit: ${{ steps.resolve.outputs.release-commit }}
+            source_tree: ${{ steps.resolve.outputs.release-tree }}
+            tag_name: ${{ steps.resolve.outputs.tag-name }}
         env:
             TAG_NAME: ${{ inputs.tag }}
         steps:
+            - name: Resolve exact release tag and commit
+              id: resolve
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+                  tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}")"
+                  test "$(jq -er '.ref' <<< "$tag_ref")" = "refs/tags/${TAG_NAME}"
+                  object_type="$(jq -er '.object.type' <<< "$tag_ref")"
+                  release_commit="$(jq -er '.object.sha' <<< "$tag_ref")"
+                  peel_count=0
+                  while [[ "$object_type" == tag ]]; do
+                      ((peel_count += 1))
+                      test "$peel_count" -le 8
+                      tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${release_commit}")"
+                      if [[ "$peel_count" -eq 1 ]]; then
+                          test "$(jq -er '.tag' <<< "$tag_object")" = "$TAG_NAME"
+                      fi
+                      object_type="$(jq -er '.object.type' <<< "$tag_object")"
+                      release_commit="$(jq -er '.object.sha' <<< "$tag_object")"
+                  done
+                  test "$object_type" = commit
+                  [[ "$release_commit" =~ ^[0-9a-f]{40}$ ]]
+                  release_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${release_commit}" --jq '.tree.sha')"
+                  [[ "$release_tree" =~ ^[0-9a-f]{40}$ ]]
+
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"
+                  jq -e --arg commit "$release_commit" --arg tag "$TAG_NAME" \
+                      '.tag_name == $tag and .draft == false and .target_commitish == $commit
+                        and ((has("immutable") | not) or (.immutable | type == "boolean"))' \
+                      <<< "$release_json" >/dev/null
+                  {
+                      printf 'artifact-name=ran-ecwid-shop-teaser-manual-release-%s-%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+                      printf 'release-commit=%s\n' "$release_commit"
+                      printf 'release-tree=%s\n' "$release_tree"
+                      printf 'tag-name=%s\n' "$TAG_NAME"
+                      printf 'version=%s\n' "${TAG_NAME#v}"
+                  } >> "$GITHUB_OUTPUT"
+
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   persist-credentials: false
-                  ref: ${{ env.TAG_NAME }}
+                  ref: ${{ steps.resolve.outputs.release-commit }}
             - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
               with:
                   node-version-file: package.json
@@ -252,27 +686,156 @@ jobs:
                   pnpm check:generated
                   composer lint
                   composer lint:compat
-            - name: Build and upload verified release assets
-              id: release
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Build verified release assets without a write token
+              shell: bash
               run: |
                   bash scripts/create-release-assets.sh "$TAG_NAME"
                   version="${TAG_NAME#v}"
-                  gh release upload "$TAG_NAME" "dist/ran-ecwid-shop-teaser-${version}.zip" "dist/ran-ecwid-shop-teaser-${version}.zip.sha256" "dist/ran-ecwid-shop-teaser-${version}.manifest.json" --clobber --repo "$GITHUB_REPOSITORY"
-                  echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+                  jq -e --arg commit '${{ steps.resolve.outputs.release-commit }}' --arg tag "$TAG_NAME" --arg version "$version" \
+                      '.commit == $commit and .tag == $tag and .version == $version' \
+                      "dist/ran-ecwid-shop-teaser-${version}.manifest.json" >/dev/null
+                  (cd dist && sha256sum --check --strict "ran-ecwid-shop-teaser-${version}.zip.sha256")
+
+            - name: Upload isolated manual release evidence
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: ${{ steps.resolve.outputs.artifact-name }}
+                  path: |
+                      dist/ran-ecwid-shop-teaser-${{ steps.resolve.outputs.version }}.zip
+                      dist/ran-ecwid-shop-teaser-${{ steps.resolve.outputs.version }}.zip.sha256
+                      dist/ran-ecwid-shop-teaser-${{ steps.resolve.outputs.version }}.manifest.json
+                  if-no-files-found: error
+                  retention-days: 1
+
+    publish-manual-release:
+        name: Publish isolated manual release assets
+        needs: package-release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.package-release.result == 'success'
+        runs-on: blacksmith-2vcpu-ubuntu-2404
+        permissions:
+            contents: write
+        outputs:
+            release_commit: ${{ needs.package-release.outputs.release_commit }}
+            release_tree: ${{ needs.package-release.outputs.release_tree }}
+            source_commit: ${{ needs.package-release.outputs.source_commit }}
+            source_tree: ${{ needs.package-release.outputs.source_tree }}
+            tag_name: ${{ needs.package-release.outputs.tag_name }}
+        steps:
+            - name: Download isolated manual release evidence
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: ${{ needs.package-release.outputs.artifact_name }}
+                  path: dist
+
+            - name: Verify and upload without executing release-controlled code
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RELEASE_COMMIT: ${{ needs.package-release.outputs.release_commit }}
+                  TAG_NAME: ${{ needs.package-release.outputs.tag_name }}
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  version="${TAG_NAME#v}"
+                  archive="ran-ecwid-shop-teaser-${version}.zip"
+                  checksum="${archive}.sha256"
+                  manifest="ran-ecwid-shop-teaser-${version}.manifest.json"
+                  test -f "dist/${archive}" && test -f "dist/${checksum}" && test -f "dist/${manifest}"
+                  (cd dist && sha256sum --check --strict "$checksum")
+                  unzip -tqq "dist/${archive}"
+                  jq -e --arg archive "$archive" --arg commit "$RELEASE_COMMIT" --arg tag "$TAG_NAME" --arg version "$version" \
+                      '.schemaVersion == 1 and .archive == $archive and .commit == $commit and .tag == $tag and .version == $version' \
+                      "dist/${manifest}" >/dev/null
+
+                  tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}")"
+                  test "$(jq -er '.ref' <<< "$tag_ref")" = "refs/tags/${TAG_NAME}"
+                  tag_type="$(jq -er '.object.type' <<< "$tag_ref")"
+                  tag_commit="$(jq -er '.object.sha' <<< "$tag_ref")"
+                  peel_count=0
+                  while [[ "$tag_type" == tag ]]; do
+                      ((peel_count += 1))
+                      test "$peel_count" -le 8
+                      tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_commit}")"
+                      if [[ "$peel_count" -eq 1 ]]; then
+                          test "$(jq -er '.tag' <<< "$tag_object")" = "$TAG_NAME"
+                      fi
+                      tag_type="$(jq -er '.object.type' <<< "$tag_object")"
+                      tag_commit="$(jq -er '.object.sha' <<< "$tag_object")"
+                  done
+                  test "$tag_type" = commit
+                  test "$tag_commit" = "$RELEASE_COMMIT"
+
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"
+                  expected="$(printf '%s\n' "$manifest" "$archive" "$checksum" | jq -Rsc 'split("\n") | map(select(length > 0)) | sort')"
+                  jq -e --arg commit "$RELEASE_COMMIT" --arg tag "$TAG_NAME" --argjson expected "$expected" \
+                      '.tag_name == $tag and .draft == false and .target_commitish == $commit
+                        and ((has("immutable") | not) or (.immutable | type == "boolean"))
+                        and ([.assets[].name] as $actual
+                            | ($actual | unique | length) == ($actual | length)
+                            and ($actual - $expected | length == 0)
+                            and ((.immutable // false) == false or ($actual | sort) == $expected))' \
+                      <<< "$release_json" >/dev/null
+                  immutable="$(jq -r '.immutable // false' <<< "$release_json")"
+
+                  rm -rf published-dist
+                  mkdir published-dist
+                  matches=true
+                  if ! gh release download "$TAG_NAME" --pattern "$archive" --pattern "$checksum" --pattern "$manifest" --dir published-dist --repo "$GITHUB_REPOSITORY"; then
+                      matches=false
+                  fi
+                  for name in "$archive" "$checksum" "$manifest"; do
+                      if [[ ! -f "published-dist/${name}" ]] || ! cmp --silent "dist/${name}" "published-dist/${name}"; then matches=false; fi
+                  done
+                  if [[ "$matches" != true ]]; then
+                      if [[ "$immutable" == true ]]; then
+                          echo '::error::Immutable published release assets do not match the rebuilt evidence.'
+                          exit 1
+                      fi
+                      gh release upload "$TAG_NAME" "dist/${archive}" "dist/${checksum}" "dist/${manifest}" --clobber --repo "$GITHUB_REPOSITORY"
+                      rm -rf published-dist
+                      mkdir published-dist
+                      gh release download "$TAG_NAME" --pattern "$archive" --pattern "$checksum" --pattern "$manifest" --dir published-dist --repo "$GITHUB_REPOSITORY"
+                  fi
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"
+                  jq -e --arg commit "$RELEASE_COMMIT" --arg tag "$TAG_NAME" --argjson expected "$expected" \
+                      '.tag_name == $tag and .draft == false and .target_commitish == $commit
+                        and ((has("immutable") | not) or (.immutable | type == "boolean"))
+                        and ([.assets[].name] | sort) == $expected' \
+                      <<< "$release_json" >/dev/null
+                  tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}")"
+                  test "$(jq -er '.ref' <<< "$tag_ref")" = "refs/tags/${TAG_NAME}"
+                  tag_type="$(jq -er '.object.type' <<< "$tag_ref")"
+                  tag_commit="$(jq -er '.object.sha' <<< "$tag_ref")"
+                  peel_count=0
+                  while [[ "$tag_type" == tag ]]; do
+                      ((peel_count += 1))
+                      test "$peel_count" -le 8
+                      tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_commit}")"
+                      if [[ "$peel_count" -eq 1 ]]; then
+                          test "$(jq -er '.tag' <<< "$tag_object")" = "$TAG_NAME"
+                      fi
+                      tag_type="$(jq -er '.object.type' <<< "$tag_object")"
+                      tag_commit="$(jq -er '.object.sha' <<< "$tag_object")"
+                  done
+                  test "$tag_type" = commit
+                  test "$tag_commit" = "$RELEASE_COMMIT"
+                  for name in "$archive" "$checksum" "$manifest"; do
+                      test "$(sha256sum "dist/${name}" | cut -d ' ' -f 1)" = "$(sha256sum "published-dist/${name}" | cut -d ' ' -f 1)"
+                      cmp --silent "dist/${name}" "published-dist/${name}"
+                  done
+                  (cd published-dist && sha256sum --check --strict "$checksum")
 
     deploy-wordpress-org:
         name: Deploy to WordPress.org
         needs:
             - release-please
             - package-release
+            - publish-manual-release
         if: >-
             ${{
                 always()
                 && (
-                    (github.event_name == 'workflow_run' && needs.release-please.result == 'success' && needs.release-please.outputs.published_now == 'true' && needs.release-please.outputs.deployment_enabled == 'true')
-                    || (github.event_name == 'workflow_dispatch' && needs.package-release.result == 'success' && inputs.deploy)
+                    (github.event_name == 'push' && needs.release-please.result == 'success' && needs.release-please.outputs.published_now == 'true' && needs.release-please.outputs.deployment_enabled == 'true')
+                    || (github.event_name == 'workflow_dispatch' && needs.publish-manual-release.result == 'success' && inputs.deploy)
                 )
             }}
         runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -280,18 +843,32 @@ jobs:
             contents: read
         environment: wordpress-org
         env:
-            TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && needs.package-release.outputs.tag_name || needs.release-please.outputs.tag_name }}
+            RELEASE_COMMIT: ${{ github.event_name == 'workflow_dispatch' && needs.publish-manual-release.outputs.release_commit || needs.release-please.outputs.release_commit }}
+            RELEASE_TREE: ${{ github.event_name == 'workflow_dispatch' && needs.publish-manual-release.outputs.release_tree || needs.release-please.outputs.release_tree }}
+            SOURCE_COMMIT: ${{ github.event_name == 'workflow_dispatch' && needs.publish-manual-release.outputs.source_commit || needs.release-please.outputs.source_commit }}
+            SOURCE_TREE: ${{ github.event_name == 'workflow_dispatch' && needs.publish-manual-release.outputs.source_tree || needs.release-please.outputs.source_tree }}
+            TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && needs.publish-manual-release.outputs.tag_name || needs.release-please.outputs.tag_name }}
             WORDPRESS_ORG_USERNAME: ${{ secrets.WORDPRESS_ORG_USERNAME }}
             WORDPRESS_ORG_PASSWORD: ${{ secrets.WORDPRESS_ORG_PASSWORD }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   persist-credentials: false
-                  ref: ${{ env.TAG_NAME }}
+                  ref: ${{ env.RELEASE_COMMIT }}
             - name: Download canonical GitHub release assets
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
+                  set -euo pipefail
+                  test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+                  test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+                  [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+                  [[ "$SOURCE_TREE" =~ ^[0-9a-f]{40}$ ]]
+                  source_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${SOURCE_COMMIT}" --jq '.tree.sha')"
+                  release_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${RELEASE_COMMIT}" --jq '.tree.sha')"
+                  test "$source_tree" = "$SOURCE_TREE"
+                  test "$release_tree" = "$RELEASE_TREE"
+                  test "$SOURCE_TREE" = "$RELEASE_TREE"
                   version="${TAG_NAME#v}"
                   mkdir -p dist
                   gh release download "$TAG_NAME" --pattern "ran-ecwid-shop-teaser-${version}.*" --dir dist --repo "$GITHUB_REPOSITORY"
@@ -301,4 +878,4 @@ jobs:
                   options=()
                   [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]] && options+=(--allow-disabled)
                   [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && '${{ inputs.sync_assets }}' == true ]] && options+=(--sync-assets)
-                  bash scripts/deploy-wordpress-org.sh "dist/ran-ecwid-shop-teaser-${version}.zip" "dist/ran-ecwid-shop-teaser-${version}.zip.sha256" "dist/ran-ecwid-shop-teaser-${version}.manifest.json" "${options[@]}"
+                  bash scripts/deploy-wordpress-org.sh "dist/ran-ecwid-shop-teaser-${version}.zip" "dist/ran-ecwid-shop-teaser-${version}.zip.sha256" "dist/ran-ecwid-shop-teaser-${version}.manifest.json" "$SOURCE_COMMIT" "${options[@]}"

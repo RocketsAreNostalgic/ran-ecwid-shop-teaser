@@ -7,10 +7,16 @@ export TZ=UTC
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_PATH="${PLUGIN_ROOT}/wordpress-org/deployment.json"
-ARCHIVE_PATH="${1:?Usage: deploy-wordpress-org.sh <archive> <checksum> <manifest> [--allow-disabled] [--sync-assets]}"
+ARCHIVE_PATH="${1:?Usage: deploy-wordpress-org.sh <archive> <checksum> <manifest> <source-commit> [--allow-disabled] [--sync-assets]}"
 CHECKSUM_PATH="${2:?A SHA-256 file is required.}"
 MANIFEST_PATH="${3:?A release manifest is required.}"
-shift 3
+SOURCE_COMMIT="${4:?The proven source commit is required.}"
+shift 4
+
+if [[ ! "${SOURCE_COMMIT}" =~ ^[0-9a-f]{40}$ ]]; then
+	echo "The proven source commit is not a full Git SHA." >&2
+	exit 1
+fi
 
 ALLOW_DISABLED=false
 SYNC_ASSETS=false
@@ -45,7 +51,7 @@ fi
 if [[ "$(jq -er '.archive' "${MANIFEST_PATH}")" != "$(basename "${ARCHIVE_PATH}")" || \
 	"$(jq -er '.sha256' "${MANIFEST_PATH}")" != "${ARCHIVE_SHA256}" || \
 	"$(jq -cer '.files' "${MANIFEST_PATH}")" != "$(jq -c <<< "${ARCHIVE_FILES}")" || \
-	"$(jq -er '.commit' "${MANIFEST_PATH}")" != "$(git -C "${PLUGIN_ROOT}" rev-parse HEAD)" || \
+	"$(jq -er '.commit' "${MANIFEST_PATH}")" != "${SOURCE_COMMIT}" || \
 	"$(jq -er '.packageSlug' "${MANIFEST_PATH}")" != "${PACKAGE_SLUG}" || \
 	"$(jq -er '.mainPluginFile' "${MANIFEST_PATH}")" != "${MAIN_PLUGIN_FILE}" || \
 	"$(jq -r '.wordpressOrgSlug' "${MANIFEST_PATH}")" != "${WORDPRESS_ORG_SLUG}" ]]; then

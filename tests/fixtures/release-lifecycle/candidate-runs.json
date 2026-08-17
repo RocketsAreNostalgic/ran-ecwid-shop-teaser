@@ -1,0 +1,53 @@
+{
+	"workflow_runs": [
+		{
+			"id": 500,
+			"run_attempt": 2,
+			"workflow_id": 88,
+			"path": ".github/workflows/quality.yml",
+			"event": "pull_request",
+			"status": "completed",
+			"conclusion": "success",
+			"head_branch": "release-please--branches--main--components--ran-ecwid-shop-teaser",
+			"head_sha": "1111111111111111111111111111111111111111",
+			"head_repository": {
+				"full_name": "RocketsAreNostalgic/ran-ecwid-shop-teaser"
+			},
+			"actor": { "login": "github-actions[bot]" },
+			"triggering_actor": { "login": "bnjmnrsh" }
+		},
+		{
+			"id": 503,
+			"run_attempt": 3,
+			"workflow_id": 88,
+			"path": ".github/workflows/quality.yml",
+			"event": "pull_request",
+			"status": "completed",
+			"conclusion": "success",
+			"head_branch": "release-please--branches--main--components--ran-ecwid-shop-teaser",
+			"head_sha": "1111111111111111111111111111111111111111",
+			"head_repository": {
+				"full_name": "RocketsAreNostalgic/ran-ecwid-shop-teaser"
+			},
+			"actor": { "login": "mallory" },
+			"triggering_actor": { "login": "mallory" }
+		},
+		{
+			"id": 504,
+			"run_attempt": 1,
+			"workflow_id": 88,
+			"path": ".github/workflows/quality.yml",
+			"event": "workflow_dispatch",
+			"display_title": "Quality candidate PR #11 @ 1111111111111111111111111111111111111111",
+			"status": "completed",
+			"conclusion": "success",
+			"head_branch": "release-please--branches--main--components--ran-ecwid-shop-teaser",
+			"head_sha": "1111111111111111111111111111111111111111",
+			"head_repository": {
+				"full_name": "RocketsAreNostalgic/ran-ecwid-shop-teaser"
+			},
+			"actor": { "login": "github-actions[bot]" },
+			"triggering_actor": { "login": "github-actions[bot]" }
+		}
+	]
+}
