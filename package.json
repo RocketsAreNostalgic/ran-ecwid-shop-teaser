@@ -42,9 +42,12 @@
 		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist && php tools/annotate-pot-release-version.php",
 		"archive": "php tools/build-release.php",
 		"archive:check": "php tools/build-release.php --check",
-		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && pnpm format:check && pnpm lint:php",
+		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && pnpm format:check && pnpm lint:php && pnpm test:release-candidate && pnpm test:release-lifecycle && pnpm test:release-workflow",
 		"check:generated": "pnpm build && pnpm i18n:pot && git diff --exit-code -- build/blocks languages/ran-ecwid-shop-teaser.pot",
 		"test:php": "composer test",
+		"test:release-candidate": "bash tests/release-candidate-contract.sh",
+		"test:release-lifecycle": "bash tests/release-lifecycle-fixtures.sh",
+		"test:release-workflow": "bash tests/release-workflow-contract.sh",
 		"release:verify": "pnpm archive:check"
 	},
 	"prettier": "@wordpress/prettier-config",
