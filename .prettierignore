@@ -1,5 +1,6 @@
 build/
 .codex/skills/
+.agents/skills/
 node_modules/
 vendor/
 *.min.css
