@@ -23,9 +23,18 @@
 		"node": ">=24.11.0 <25"
 	},
 	"devDependencies": {
-		"@wordpress/prettier-config": "^4.50.0",
+		"@babel/core": "7.29.7",
+		"@rocketsarenostalgic/quality-config": "github:RocketsAreNostalgic/ran-quality-config#751edd097e3902efb93992bf47401a1a4f4b1fa8",
+		"@wordpress/eslint-plugin": "25.7.0",
+		"@wordpress/prettier-config": "4.51.0",
 		"@wordpress/scripts": "^30.25.0",
-		"prettier": "npm:wp-prettier@^3.0.3",
+		"@wordpress/stylelint-config": "24.0.0",
+		"eslint": "9.39.5",
+		"prettier": "3.9.5",
+		"react": "18.3.1",
+		"react-dom": "18.3.1",
+		"stylelint": "16.26.1",
+		"stylelint-scss": "6.14.0",
 		"typescript": "6.0.3"
 	},
 	"scripts": {
@@ -35,14 +44,14 @@
 		"build": "wp-scripts build --source-path=blocks --output-path=build/blocks",
 		"format": "prettier --write --ignore-path .prettierignore --ignore-unknown .",
 		"format:check": "prettier --check --ignore-path .prettierignore --ignore-unknown .",
-		"lint:js": "wp-scripts lint-js",
-		"lint:css": "wp-scripts lint-style",
+		"lint:js": "eslint \"blocks/**/*.js\"",
+		"lint:css": "stylelint \"blocks/**/*.css\"",
 		"lint:pkg-json": "wp-scripts lint-pkg-json",
 		"lint:php": "php tools/lint-php.php",
 		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist && php tools/annotate-pot-release-version.php",
 		"archive": "php tools/build-release.php",
 		"archive:check": "php tools/build-release.php --check",
-		"check": "wp-scripts lint-pkg-json && wp-scripts lint-js && wp-scripts lint-style && pnpm format:check && pnpm lint:php && pnpm test:release-candidate && pnpm test:release-lifecycle && pnpm test:release-workflow",
+		"check": "pnpm lint:pkg-json && pnpm lint:js && pnpm lint:css && pnpm format:check && pnpm lint:php && pnpm test:release-candidate && pnpm test:release-lifecycle && pnpm test:release-workflow",
 		"check:generated": "pnpm build && pnpm i18n:pot && git diff --exit-code -- build/blocks languages/ran-ecwid-shop-teaser.pot",
 		"test:php": "composer test",
 		"test:release-candidate": "bash tests/release-candidate-contract.sh",
@@ -50,7 +59,6 @@
 		"test:release-workflow": "bash tests/release-workflow-contract.sh",
 		"release:verify": "pnpm archive:check"
 	},
-	"prettier": "@wordpress/prettier-config",
 	"volta": {
 		"node": "24.11.0"
 	},
