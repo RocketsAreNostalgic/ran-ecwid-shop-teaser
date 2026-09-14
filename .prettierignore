@@ -6,3 +6,6 @@ vendor/
 *.min.css
 CHANGELOG.md
 pnpm-lock.yaml
+
+# Prettier 3.9.5 is non-idempotent for the nested fenced shell block in this checklist.
+PRE-RELEASE-CHECKLIST.md
