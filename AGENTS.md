@@ -23,24 +23,24 @@ dex --storage-path .dex start <id>
 dex --storage-path .dex complete <id> --result "What changed and how it was verified" --commit <sha>
 ```
 
--   Use one parent task per meaningful outcome and child tasks for independently
-    verifiable slices.
--   Record decisions, validation, and follow-up work in the Dex task result.
--   Do not commit, copy, delete, or externally sync `.dex` without explicit
-    direction.
--   Keep durable project decisions in tracked Markdown documentation; Dex is the
-    working plan and execution ledger, not published project history.
+- Use one parent task per meaningful outcome and child tasks for independently
+  verifiable slices.
+- Record decisions, validation, and follow-up work in the Dex task result.
+- Do not commit, copy, delete, or externally sync `.dex` without explicit
+  direction.
+- Keep durable project decisions in tracked Markdown documentation; Dex is the
+  working plan and execution ledger, not published project history.
 
 ## WordPress skills
 
 The project-scoped WordPress skills live in `.codex/skills/`. Read the relevant
 `SKILL.md` before working in its area:
 
--   `wordpress-router` and `wp-project-triage` for initial orientation.
--   `wp-plugin-development` for plugin structure, hooks, settings, security,
-    and WordPress conventions.
--   `wp-wpcli-and-ops` for WP-CLI or operational changes.
--   `wp-phpstan` when adding or changing static analysis.
+- `wordpress-router` and `wp-project-triage` for initial orientation.
+- `wp-plugin-development` for plugin structure, hooks, settings, security,
+  and WordPress conventions.
+- `wp-wpcli-and-ops` for WP-CLI or operational changes.
+- `wp-phpstan` when adding or changing static analysis.
 
 ## Development workflow
 
@@ -61,6 +61,27 @@ relevant source changes, then review and stage the generated build assets and
 `languages/ran-ecwid-shop-teaser.pot`. The pre-commit hook enforces those
 checks for its configured source paths; tooling, documentation, and
 release-only changes must not cause an unnecessary rebuild.
+
+## Quality profile and ownership
+
+This repository uses the RAN `wordpress-plugin` quality profile.
+
+- `ran/coding-standards` owns the organisation-wide PHP, WordPress Coding
+  Standards, and PHPCompatibility ancestry. This repository continues to own
+  its WordPress 6.5+ / PHP 8.0+ support range, source paths, identity, and
+  justified PHPCS exceptions.
+- `@rocketsarenostalgic/quality-config` owns the shared ESLint, Prettier, and
+  Stylelint ancestry. This repository continues to own source selection,
+  generated/vendor exclusions, applicability, and product-specific
+  exceptions, including `@wordpress/no-unsafe-wp-apis`.
+- `composer check` is the deterministic PHP source-quality contract for the
+  shared baseline. WordPress integration PHPUnit remains owned by the
+  compatibility matrix.
+- `pnpm check` remains the deterministic package-level quality contract.
+- Release-candidate validation, archive identity, generated block/POT drift,
+  fresh-ZIP install/activation, compatibility coverage, and Plugin Check
+  remain repository-owned specialist gates. Shared quality adoption must not
+  remove or weaken them.
 
 ## Git and commits
 

@@ -22,6 +22,13 @@ permissions:
     pull-requests: read
 
 jobs:
+    baseline:
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: RocketsAreNostalgic/.github/.github/workflows/quality-wordpress-plugin.yml@72a90b5826db37d1e94cdcdcf3374ccf58c0aa7d # accepted quality-v1 provider
+        with:
+            php-version: '8.3'
+            pnpm-version: '11.5.2'
+
     quality:
         name: Quality and release artifact
         runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -143,7 +150,6 @@ jobs:
                   pnpm check
                   pnpm check:generated
                   composer lint
-                  composer lint:compat
 
             - name: Run strict release-candidate contract gates
               if: ${{ steps.lifecycle.outputs.lane == 'release-candidate' }}
@@ -348,4 +354,27 @@ jobs:
                   if [[ '${{ matrix.plugin_check }}' == true ]]; then
                       wp plugin install plugin-check --path="$fresh_root" --activate
                       wp plugin check ran-ecwid-shop-teaser --path="$fresh_root"
+                  fi
+
+    quality-gate:
+        name: quality
+        if: ${{ github.event_name == 'pull_request' && always() }}
+        needs:
+            - baseline
+            - quality
+            - compatibility
+        runs-on: ubuntu-latest
+        steps:
+            - name: Require all ordinary quality lanes
+              env:
+                  BASELINE_RESULT: ${{ needs.baseline.result }}
+                  SOURCE_RESULT: ${{ needs.quality.result }}
+                  COMPATIBILITY_RESULT: ${{ needs.compatibility.result }}
+              run: |
+                  printf 'baseline=%s\nsource=%s\ncompatibility=%s\n' \
+                    "$BASELINE_RESULT" "$SOURCE_RESULT" "$COMPATIBILITY_RESULT"
+                  if [ "$BASELINE_RESULT" != success ] \
+                    || [ "$SOURCE_RESULT" != success ] \
+                    || [ "$COMPATIBILITY_RESULT" != success ]; then
+                      exit 1
                   fi

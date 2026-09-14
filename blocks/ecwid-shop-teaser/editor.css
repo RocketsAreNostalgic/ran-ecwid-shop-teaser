@@ -104,7 +104,8 @@
 }
 
 .ran-ecwid-shop-teaser-editor__align-icon {
-	background-image: linear-gradient(currentcolor, currentcolor),
+	background-image:
+		linear-gradient(currentcolor, currentcolor),
 		linear-gradient(currentcolor, currentcolor),
 		linear-gradient(currentcolor, currentcolor);
 	background-position:

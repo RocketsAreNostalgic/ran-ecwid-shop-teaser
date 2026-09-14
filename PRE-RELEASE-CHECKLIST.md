@@ -24,7 +24,6 @@ service-policy sign-off.
           composer install --no-interaction
           pnpm check
           composer lint
-          composer lint:compat
           pnpm check:generated
           pnpm release:verify
           bash scripts/create-release-assets.sh v1.1.1
