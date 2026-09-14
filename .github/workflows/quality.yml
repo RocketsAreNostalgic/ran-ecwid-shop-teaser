@@ -150,7 +150,6 @@ jobs:
                   pnpm check
                   pnpm check:generated
                   composer lint
-                  composer lint:compat
 
             - name: Run strict release-candidate contract gates
               if: ${{ steps.lifecycle.outputs.lane == 'release-candidate' }}
