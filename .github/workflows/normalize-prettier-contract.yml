@@ -33,11 +33,12 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Normalize only files reported by the shared formatter
+              shell: bash
               run: |
+                  set -euo pipefail
                   pnpm exec prettier --write \
                     .stylelintrc.json \
                     AGENTS.md \
-                    PRE-RELEASE-CHECKLIST.md \
                     README.md \
                     tests/fixtures/release-lifecycle/pr-files-dependency-locks.json \
                     tests/fixtures/release-lifecycle/recovery-candidate-human.json \
@@ -49,6 +50,19 @@ jobs:
                     tests/fixtures/release-lifecycle/ruleset-missing-bypass-actors.json \
                     tests/fixtures/release-lifecycle/ruleset-missing-current-user.json \
                     tests/fixtures/release-lifecycle/ruleset-valid.json
+
+                  converged=false
+                  for pass in 1 2 3 4 5; do
+                      before="$(sha256sum PRE-RELEASE-CHECKLIST.md | cut -d ' ' -f 1)"
+                      pnpm exec prettier --write PRE-RELEASE-CHECKLIST.md
+                      after="$(sha256sum PRE-RELEASE-CHECKLIST.md | cut -d ' ' -f 1)"
+                      printf 'checklist pass=%s before=%s after=%s\n' "$pass" "$before" "$after"
+                      if [[ "$before" == "$after" ]]; then
+                          converged=true
+                          break
+                      fi
+                  done
+                  test "$converged" = true
                   pnpm format:check
 
             - name: Commit only formatter-normalization changes
