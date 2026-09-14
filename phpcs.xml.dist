@@ -6,7 +6,7 @@
 	<exclude-pattern>vendor/*</exclude-pattern>
 
 	<!-- Repository support policy remains local. -->
-	<config name="minimum_supported_wp_version" value="6.5" />
+	<config name="minimum_wp_version" value="6.5" />
 	<config name="testVersion" value="8.0-" />
 
 	<!-- Shared RAN WordPress/WPCS/PHPCompatibility ancestry. -->
