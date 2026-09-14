@@ -8,8 +8,9 @@ wordpress-org
 wordpress-org-assets
 .distignore
 .editorconfig
-.eslintrc.json
+eslint.config.mjs
 .prettierignore
+prettier.config.cjs
 .stylelintrc.json
 composer.json
 composer.lock
@@ -17,7 +18,6 @@ dist
 node_modules
 package.json
 phpcs.xml.dist
-phpcs-compat.xml.dist
 phpunit.xml.dist
 pnpm-lock.yaml
 pnpm-workspace.yaml
