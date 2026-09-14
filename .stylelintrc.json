@@ -1,6 +1,6 @@
 {
-	"extends": "@wordpress/stylelint-config",
-	"ignoreFiles": [ "build/**/*", "node_modules/**/*", "vendor/**/*" ],
+	"extends": ["@rocketsarenostalgic/quality-config/stylelint/wordpress"],
+	"ignoreFiles": ["build/**/*", "node_modules/**/*", "vendor/**/*"],
 	"rules": {
 		"at-rule-empty-line-before": null,
 		"comment-empty-line-before": null,
@@ -8,7 +8,7 @@
 		"function-url-quotes": null,
 		"selector-class-pattern": [
 			"^([a-z][a-z0-9]*|wp-[a-z0-9-]+|components-[a-z0-9-]+|block-editor-[a-z0-9-]+)(?:-[a-z0-9]+)*(?:__[a-z0-9]+(?:-[a-z0-9]+)*)?(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$",
-			{ "resolveNestedSelectors": true }
+			{"resolveNestedSelectors": true}
 		],
 		"rule-empty-line-before": null
 	}
