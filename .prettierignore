@@ -5,3 +5,4 @@ node_modules/
 vendor/
 *.min.css
 CHANGELOG.md
+pnpm-lock.yaml
