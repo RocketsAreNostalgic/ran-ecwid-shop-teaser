@@ -1,0 +1,60 @@
+name: Remove redundant compatibility invocations
+
+on:
+    pull_request:
+
+permissions:
+    contents: write
+
+jobs:
+    fix:
+        if: >-
+            github.event.pull_request.head.repo.full_name == github.repository
+            && github.event.pull_request.head.ref == 'chore/adopt-shared-quality-profile'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out feature branch
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.event.pull_request.head.ref }}
+
+            - name: Remove only redundant compatibility invocations
+              shell: python
+              run: |
+                  from pathlib import Path
+
+                  replacements = {
+                      Path('.github/workflows/quality.yml'): ('                  composer lint\n                  composer lint:compat\n', '                  composer lint\n'),
+                      Path('.github/workflows/release-please.yml'): ('                  composer lint\n                  composer lint:compat\n', '                  composer lint\n'),
+                      Path('PRE-RELEASE-CHECKLIST.md'): ('          composer lint\n          composer lint:compat\n', '          composer lint\n'),
+                  }
+
+                  for path, (old, new) in replacements.items():
+                      text = path.read_text()
+                      count = text.count(old)
+                      if count != 1:
+                          raise SystemExit(f'{path}: expected exactly one redundant invocation block, found {count}')
+                      path.write_text(text.replace(old, new, 1))
+
+            - name: Commit exact fix and remove temporary workflow
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  rm .github/workflows/fix-redundant-compat-invocations.yml
+                  changed="$(git diff --name-only | sort)"
+                  expected="$(printf '%s\n' \
+                    .github/workflows/fix-redundant-compat-invocations.yml \
+                    .github/workflows/quality.yml \
+                    .github/workflows/release-please.yml \
+                    PRE-RELEASE-CHECKLIST.md | sort)"
+                  test "$changed" = "$expected"
+                  git config user.name 'github-actions[bot]'
+                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  git add -A -- \
+                    .github/workflows/fix-redundant-compat-invocations.yml \
+                    .github/workflows/quality.yml \
+                    .github/workflows/release-please.yml \
+                    PRE-RELEASE-CHECKLIST.md
+                  git commit -m 'ci: remove redundant compatibility checks'
+                  git push origin HEAD:${{ github.event.pull_request.head.ref }}
