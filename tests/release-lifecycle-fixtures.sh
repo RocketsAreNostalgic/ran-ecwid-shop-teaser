@@ -21,12 +21,20 @@ ruleset_admitted() {
 		and (.bypass_actors | type == "array" and length == 0)
 		and has("current_user_can_bypass")
 		and .current_user_can_bypass == "never"
-		and ([.rules[] | select(.type == "required_linear_history")] | length) == 0
-		and any(.rules[]; .type == "pull_request" and (.parameters.allowed_merge_methods | sort) == ["merge", "squash"])
+		and all(.rules[]; .type != "required_linear_history")
+		and any(.rules[]; .type == "deletion")
+		and any(.rules[]; .type == "non_fast_forward")
+		and any(.rules[];
+			.type == "pull_request"
+			and (.parameters.allowed_merge_methods | sort) == ["merge", "squash"]
+			and .parameters.dismiss_stale_reviews_on_push == true
+			and .parameters.required_review_thread_resolution == true
+			and .parameters.require_last_push_approval == false)
 		and any(.rules[]; .type == "required_status_checks"
 			and .parameters.strict_required_status_checks_policy == true
-			and ([.parameters.required_status_checks[].context] | index("Quality and release artifact") != null)
-			and ([.parameters.required_status_checks[].context] | index("PHP 8.3 / WordPress latest") != null))
+			and (.parameters.required_status_checks | length) == 1
+			and .parameters.required_status_checks[0].context == "quality"
+			and .parameters.required_status_checks[0].integration_id == 15368)
 	' "$1" >/dev/null
 }
 
@@ -53,6 +61,10 @@ if ruleset_admitted "$fixtures/ruleset-rebase-enabled.json"; then
 fi
 if ruleset_admitted "$fixtures/ruleset-linear-history.json"; then
 	echo 'A ruleset requiring linear history was admitted.' >&2
+	exit 1
+fi
+if ruleset_admitted "$fixtures/ruleset-unbound-quality.json"; then
+	echo 'A quality status not bound to GitHub Actions was admitted.' >&2
 	exit 1
 fi
 
