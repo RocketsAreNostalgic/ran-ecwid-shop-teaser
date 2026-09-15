@@ -1,6 +1,7 @@
 {
 	"enforcement": "active",
 	"bypass_actors": [],
+	"current_user_can_bypass": "never",
 	"rules": [
 		{ "type": "deletion" },
 		{ "type": "non_fast_forward" },
@@ -17,9 +18,7 @@
 			"type": "required_status_checks",
 			"parameters": {
 				"strict_required_status_checks_policy": true,
-				"required_status_checks": [
-					{ "context": "quality", "integration_id": 15368 }
-				]
+				"required_status_checks": [{ "context": "quality" }]
 			}
 		}
 	]
