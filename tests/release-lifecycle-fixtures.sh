@@ -21,8 +21,8 @@ ruleset_admitted() {
 		and (.bypass_actors | type == "array" and length == 0)
 		and has("current_user_can_bypass")
 		and .current_user_can_bypass == "never"
-		and any(.rules[]; .type == "required_linear_history")
-		and any(.rules[]; .type == "pull_request" and (.parameters.allowed_merge_methods | sort) == ["rebase", "squash"])
+		and ([.rules[] | select(.type == "required_linear_history")] | length) == 0
+		and any(.rules[]; .type == "pull_request" and (.parameters.allowed_merge_methods | sort) == ["merge", "squash"])
 		and any(.rules[]; .type == "required_status_checks"
 			and .parameters.strict_required_status_checks_policy == true
 			and ([.parameters.required_status_checks[].context] | index("Quality and release artifact") != null)
@@ -45,6 +45,14 @@ if ruleset_admitted "$fixtures/ruleset-bypass-actor.json"; then
 fi
 if ruleset_admitted "$fixtures/ruleset-bypass-capable.json"; then
 	echo 'A bypass-capable caller was admitted.' >&2
+	exit 1
+fi
+if ruleset_admitted "$fixtures/ruleset-rebase-enabled.json"; then
+	echo 'A ruleset with rebase merge enabled was admitted.' >&2
+	exit 1
+fi
+if ruleset_admitted "$fixtures/ruleset-linear-history.json"; then
+	echo 'A ruleset requiring linear history was admitted.' >&2
 	exit 1
 fi
 

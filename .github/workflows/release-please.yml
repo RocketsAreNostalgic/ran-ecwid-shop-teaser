@@ -64,7 +64,7 @@ jobs:
                   effective_rules="$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main")"
                   jq -e '
                       any(.[]; .type == "pull_request")
-                      and any(.[]; .type == "required_linear_history")
+                      and ([.[] | select(.type == "required_linear_history")] | length) == 0
                       and any(.[]; .type == "required_status_checks")
                       and any(.[]; .type == "non_fast_forward")
                   ' <<< "$effective_rules" >/dev/null
@@ -76,8 +76,8 @@ jobs:
                       and (.bypass_actors | type == "array" and length == 0)
                       and has("current_user_can_bypass")
                       and .current_user_can_bypass == "never"
-                      and any(.rules[]; .type == "required_linear_history")
-                      and any(.rules[]; .type == "pull_request" and (.parameters.allowed_merge_methods | sort) == ["rebase", "squash"])
+                      and ([.rules[] | select(.type == "required_linear_history")] | length) == 0
+                      and any(.rules[]; .type == "pull_request" and (.parameters.allowed_merge_methods | sort) == ["merge", "squash"])
                       and any(.rules[]; .type == "required_status_checks"
                           and .parameters.strict_required_status_checks_policy == true
                           and ([.parameters.required_status_checks[].context] | index("Quality and release artifact") != null)
