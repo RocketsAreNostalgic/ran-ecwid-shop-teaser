@@ -263,8 +263,17 @@ jobs:
 
                   tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}" 2>/dev/null || true)"
                   if [[ -z "$tag_ref" ]]; then
-                      echo "::error::Historical v1.2.3 is fully qualified. Create exact tag ${RAN_RELEASE_TAG} at ${RAN_HISTORICAL_COMMIT}, then rerun this publisher job."
-                      exit 1
+                      echo "::notice::Historical v1.2.3 is fully qualified and awaiting exact owner-created tag ${RAN_RELEASE_TAG} at ${RAN_HISTORICAL_COMMIT}."
+                      echo 'state=awaiting-tag' >> "$GITHUB_OUTPUT"
+                      {
+                          echo '### v1.2.3 reconciliation'
+                          echo
+                          echo '- Historical source and release assets qualified successfully.'
+                          echo '- PHPCompatibility, WordPress 6.5, WordPress 7.0.3, fresh-install, and Plugin Check proof succeeded.'
+                          echo "- Awaiting exact owner-created tag \`${RAN_RELEASE_TAG}\` at \`${RAN_HISTORICAL_COMMIT}\`."
+                          echo '- After the tag exists, rerun only this publisher job; it will re-prove the exact tag before any release mutation.'
+                      } >> "$GITHUB_STEP_SUMMARY"
+                      exit 0
                   fi
 
                   resolve_tag_commit() {
@@ -467,6 +476,7 @@ jobs:
                       | gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --input - >/dev/null
 
             - name: Read back exact tag, release, assets, and digests
+              if: steps.identity.outputs.state != 'awaiting-tag'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               shell: bash
@@ -534,6 +544,7 @@ jobs:
                   fi
 
             - name: Reconcile Release Please PR labels only after exact publication readback
+              if: steps.identity.outputs.state != 'awaiting-tag'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               shell: bash
