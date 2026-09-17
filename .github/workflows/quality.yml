@@ -92,12 +92,19 @@ jobs:
                       test "$GITHUB_REF" = "refs/heads/${pr_head_ref}"
                   fi
 
-                  if [[ ( "$GITHUB_EVENT_NAME" == pull_request || ( "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ) ) \
-                      && "$GITHUB_ACTOR" == 'github-actions[bot]' \
-                      && "$pr_author" == 'github-actions[bot]' \
+                  # Classify the canonical Release Please PR by durable PR identity first.
+                  # Actor identity is an admission check below, not a reason to fall back
+                  # to the ordinary full-PR lane.
+                  canonical_release_pr=false
+                  if [[ "$pr_author" == 'github-actions[bot]' \
                       && "$pr_base_ref" == main \
                       && "$pr_head_ref" == 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
                       && "$pr_head_repository" == "$GITHUB_REPOSITORY" ]]; then
+                      canonical_release_pr=true
+                  fi
+
+                  if [[ "$canonical_release_pr" == true ]]; then
+                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
                       if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
                           test "$(git rev-parse HEAD)" = "$pr_head_sha"
                       fi
