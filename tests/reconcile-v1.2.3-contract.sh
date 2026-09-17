@@ -34,6 +34,9 @@ require 'name: Historical v1.2.3 / PHP ${{ matrix.php }} / WordPress ${{ matrix.
 require "wordpress: '6.5'"
 require "wordpress: '7.0.3'"
 require 'wp plugin check ran-ecwid-shop-teaser'
+require 'image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b'
+require 'https://raw.githubusercontent.com/wp-cli/scaffold-command/4a464898bf96f9d5e19e9f04957a702bf9bdc191/templates/install-wp-tests.sh'
+require 'remote_digest="$(jq -r '\''.[0].digest // ""'\'' <<< "$matches")"'
 
 rebuild_start=$(grep -n '^  rebuild:$' "$workflow" | cut -d: -f1)
 compat_start=$(grep -n '^  compatibility:$' "$workflow" | cut -d: -f1)
