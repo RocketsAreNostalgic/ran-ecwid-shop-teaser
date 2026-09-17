@@ -261,20 +261,39 @@ jobs:
                   (cd dist && sha256sum --check --strict "$(basename "$checksum")")
                   unzip -tqq "$archive"
 
-                  tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}" 2>/dev/null || true)"
-                  if [[ -z "$tag_ref" ]]; then
-                      echo "::notice::Historical v1.2.3 is fully qualified and awaiting exact owner-created tag ${RAN_RELEASE_TAG} at ${RAN_HISTORICAL_COMMIT}."
-                      echo 'state=awaiting-tag' >> "$GITHUB_OUTPUT"
-                      {
-                          echo '### v1.2.3 reconciliation'
-                          echo
-                          echo '- Historical source and release assets qualified successfully.'
-                          echo '- PHPCompatibility, WordPress 6.5, WordPress 7.0.3, fresh-install, and Plugin Check proof succeeded.'
-                          echo "- Awaiting exact owner-created tag \`${RAN_RELEASE_TAG}\` at \`${RAN_HISTORICAL_COMMIT}\`."
-                          echo '- After the tag exists, rerun only this publisher job; it will re-prove the exact tag before any release mutation.'
-                      } >> "$GITHUB_STEP_SUMMARY"
-                      exit 0
-                  fi
+                  tag_response="${RUNNER_TEMP}/ran-ecwid-v123-tag-ref.json"
+                  tag_http_status="$(
+                      curl --silent --show-error \
+                          --output "$tag_response" \
+                          --write-out '%{http_code}' \
+                          -H "Authorization: Bearer ${GH_TOKEN}" \
+                          -H 'Accept: application/vnd.github+json' \
+                          -H 'X-GitHub-Api-Version: 2022-11-28' \
+                          "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}"
+                  )"
+                  case "$tag_http_status" in
+                      200)
+                          tag_ref="$(cat "$tag_response")"
+                          ;;
+                      404)
+                          echo "::notice::Historical v1.2.3 is fully qualified and awaiting exact owner-created tag ${RAN_RELEASE_TAG} at ${RAN_HISTORICAL_COMMIT}."
+                          echo 'state=awaiting-tag' >> "$GITHUB_OUTPUT"
+                          {
+                              echo '### v1.2.3 reconciliation'
+                              echo
+                              echo '- Historical source and release assets qualified successfully.'
+                              echo '- PHPCompatibility, WordPress 6.5, WordPress 7.0.3, fresh-install, and Plugin Check proof succeeded.'
+                              echo "- Awaiting exact owner-created tag \`${RAN_RELEASE_TAG}\` at \`${RAN_HISTORICAL_COMMIT}\`."
+                              echo '- After the tag exists, rerun only this publisher job; it will re-prove the exact tag before any release mutation.'
+                          } >> "$GITHUB_STEP_SUMMARY"
+                          exit 0
+                          ;;
+                      *)
+                          echo "::error::Unable to read exact historical tag state (HTTP ${tag_http_status})."
+                          cat "$tag_response" >&2
+                          exit 1
+                          ;;
+                  esac
 
                   resolve_tag_commit() {
                       local ref_json=$1
