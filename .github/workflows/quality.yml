@@ -105,6 +105,7 @@ jobs:
                   fi
                   # END canonical Release Please PR identity classification
 
+                  # BEGIN canonical Release Please candidate admission
                   if [[ "$canonical_release_pr" == true ]]; then
                       test "$GITHUB_ACTOR" = 'github-actions[bot]'
                       if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
@@ -118,6 +119,7 @@ jobs:
                       echo '::error::The dispatched Release Please candidate did not satisfy the exact live PR contract.'
                       exit 1
                   fi
+                  # END canonical Release Please candidate admission
 
                   {
                       printf 'base-ref=%s\n' "$pr_base_ref"
