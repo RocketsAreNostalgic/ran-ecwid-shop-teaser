@@ -28,11 +28,11 @@ require 'RAN_RELEASE_TAG: v1.2.3'
 require 'RAN_RELEASE_VERSION: 1.2.3'
 require 'group: release-please-main'
 require 'git checkout --detach "$RAN_HISTORICAL_COMMIT"'
-require 'git rev-parse '''HEAD^{tree}'''')" = "$RAN_RELEASE_TREE"'
+require "test \"\$(git rev-parse 'HEAD^{tree}')\" = \"\$RAN_RELEASE_TREE\""
 require 'name: ran-ecwid-v1.2.3-reconciliation-${{ github.run_id }}'
 require 'name: Historical v1.2.3 / PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}'
-require 'wordpress: '''6.5''''
-require 'wordpress: '''7.0.3''''
+require "wordpress: '6.5'"
+require "wordpress: '7.0.3'"
 require 'wp plugin check ran-ecwid-shop-teaser'
 
 rebuild_start=$(grep -n '^  rebuild:$' "$workflow" | cut -d: -f1)
@@ -44,7 +44,7 @@ test "$compat_start" -lt "$publish_start"
 
 rebuild=$(sed -n "${rebuild_start},$((compat_start - 1))p" "$workflow")
 compat=$(sed -n "${compat_start},$((publish_start - 1))p" "$workflow")
-publisher=$(sed -n "${publish_start},$p" "$workflow")
+publisher=$(sed -n "${publish_start},\$p" "$workflow")
 
 grep -Fq 'permissions: {}' <<< "$rebuild"
 grep -Fq 'permissions: {}' <<< "$compat"
@@ -69,11 +69,13 @@ if grep -Eq 'pnpm install|composer install|scripts/create-release-assets\.sh' <<
   exit 1
 fi
 
-require 'live_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '''.object.sha''')"'
+require 'live_main="$(gh api'
+require 'git/ref/heads/main'
 require '.merge_commit_sha == $merge'
 require '.head.sha == $head'
 require '.user.login == "github-actions[bot]"'
 require 'Historical v1.2.3 is fully qualified. Create exact tag ${RAN_RELEASE_TAG} at ${RAN_HISTORICAL_COMMIT}'
+require 'git/ref/tags/${RAN_RELEASE_TAG}'
 reject '--method POST "repos/${GITHUB_REPOSITORY}/git/refs"'
 reject 'gh release create'
 require 'Create exact draft release from the pre-existing verified tag'
