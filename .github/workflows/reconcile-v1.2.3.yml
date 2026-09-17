@@ -63,6 +63,7 @@ jobs:
                   pnpm check
                   pnpm check:generated
                   composer lint
+                  composer lint:compat
 
                   bash scripts/create-release-assets.sh "$RAN_RELEASE_TAG"
                   archive="dist/ran-ecwid-shop-teaser-${RAN_RELEASE_VERSION}.zip"
@@ -351,8 +352,25 @@ jobs:
                   test "$(jq -er '.target_commitish' <<< "$release_json")" = "$RAN_HISTORICAL_COMMIT"
                   test "$(jq -er '.draft' <<< "$release_json")" = true
                   tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_RELEASE_TAG}")"
-                  test "$(jq -er '.object.type' <<< "$tag_ref")" = commit
-                  test "$(jq -er '.object.sha' <<< "$tag_ref")" = "$RAN_HISTORICAL_COMMIT"
+                  resolve_tag_commit() {
+                      local ref_json=$1
+                      local object_type object_sha tag_object peel_count=0
+                      object_type="$(jq -er '.object.type' <<< "$ref_json")"
+                      object_sha="$(jq -er '.object.sha' <<< "$ref_json")"
+                      while [[ "$object_type" == tag ]]; do
+                          ((peel_count += 1))
+                          test "$peel_count" -le 8
+                          tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}")"
+                          if [[ "$peel_count" -eq 1 ]]; then
+                              test "$(jq -er '.tag' <<< "$tag_object")" = "$RAN_RELEASE_TAG"
+                          fi
+                          object_type="$(jq -er '.object.type' <<< "$tag_object")"
+                          object_sha="$(jq -er '.object.sha' <<< "$tag_object")"
+                      done
+                      test "$object_type" = commit
+                      printf '%s\n' "$object_sha"
+                  }
+                  test "$(resolve_tag_commit "$tag_ref")" = "$RAN_HISTORICAL_COMMIT"
                   echo "release-id=$release_id" >> "$GITHUB_OUTPUT"
 
             - name: Synchronize exact qualified assets into the verified draft
@@ -471,6 +489,25 @@ jobs:
                       done | jq -sc 'sort_by(.name)'
                   )"
 
+                  resolve_tag_commit() {
+                      local ref_json=$1
+                      local object_type object_sha tag_object peel_count=0
+                      object_type="$(jq -er '.object.type' <<< "$ref_json")"
+                      object_sha="$(jq -er '.object.sha' <<< "$ref_json")"
+                      while [[ "$object_type" == tag ]]; do
+                          ((peel_count += 1))
+                          test "$peel_count" -le 8
+                          tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}")"
+                          if [[ "$peel_count" -eq 1 ]]; then
+                              test "$(jq -er '.tag' <<< "$tag_object")" = "$RAN_RELEASE_TAG"
+                          fi
+                          object_type="$(jq -er '.object.type' <<< "$tag_object")"
+                          object_sha="$(jq -er '.object.sha' <<< "$tag_object")"
+                      done
+                      test "$object_type" = commit
+                      printf '%s\n' "$object_sha"
+                  }
+
                   verified=false
                   for attempt in 1 2 3; do
                       if release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_RELEASE_TAG}")" \
@@ -480,7 +517,7 @@ jobs:
                               --arg commit "$RAN_HISTORICAL_COMMIT" \
                               '.tag_name == $tag and .target_commitish == $commit and .draft == false and .prerelease == false' \
                               <<< "$release_json" >/dev/null \
-                              && jq -e --arg commit "$RAN_HISTORICAL_COMMIT" '.object.type == "commit" and .object.sha == $commit' <<< "$tag_ref" >/dev/null; then
+                              && test "$(resolve_tag_commit "$tag_ref")" = "$RAN_HISTORICAL_COMMIT"; then
                               actual_names="$(jq -c '[.assets[].name] | sort' <<< "$release_json")"
                               remote_digests="$(jq -c '[.assets[] | {name, digest}] | sort_by(.name)' <<< "$release_json")"
                               if [[ "$actual_names" == "$expected_names" && "$remote_digests" == "$local_digests" ]]; then

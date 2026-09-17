@@ -37,6 +37,9 @@ require 'wp plugin check ran-ecwid-shop-teaser'
 require 'image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b'
 require 'https://raw.githubusercontent.com/wp-cli/scaffold-command/4a464898bf96f9d5e19e9f04957a702bf9bdc191/templates/install-wp-tests.sh'
 require 'remote_digest="$(jq -r '\''.[0].digest // ""'\'' <<< "$matches")"'
+require 'composer lint:compat'
+test "$(grep -Fc 'resolve_tag_commit() {' <<< "$publisher")" -ge 3
+test "$(grep -Fc 'test "$(resolve_tag_commit "$tag_ref")" = "$RAN_HISTORICAL_COMMIT"' <<< "$publisher")" -ge 3
 
 rebuild=$(awk '
   /^    rebuild:$/ { capture = 1 }
