@@ -92,6 +92,7 @@ jobs:
                       test "$GITHUB_REF" = "refs/heads/${pr_head_ref}"
                   fi
 
+                  # BEGIN canonical Release Please PR identity classification
                   # Classify the canonical Release Please PR by durable PR identity first.
                   # Actor identity is an admission check below, not a reason to fall back
                   # to the ordinary full-PR lane.
@@ -102,6 +103,7 @@ jobs:
                       && "$pr_head_repository" == "$GITHUB_REPOSITORY" ]]; then
                       canonical_release_pr=true
                   fi
+                  # END canonical Release Please PR identity classification
 
                   if [[ "$canonical_release_pr" == true ]]; then
                       test "$GITHUB_ACTOR" = 'github-actions[bot]'

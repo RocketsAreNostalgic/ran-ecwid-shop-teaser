@@ -38,7 +38,27 @@ require "$quality" 'canonical_release_pr=false'
 require "$quality" 'canonical_release_pr=true'
 require "$quality" 'if [[ "$canonical_release_pr" == true ]]; then'
 require "$quality" 'test "$GITHUB_ACTOR" = '\''github-actions[bot]'\'''
-reject "$quality" '&& "$GITHUB_ACTOR" == '\''github-actions[bot]'\'''
+
+identity_block="$(
+	sed -n \
+		'/# BEGIN canonical Release Please PR identity classification/,/# END canonical Release Please PR identity classification/p' \
+		"$quality"
+)"
+test -n "$identity_block"
+for identity_term in \
+	'pr_author' \
+	'pr_base_ref' \
+	'pr_head_ref' \
+	'pr_head_repository'; do
+	grep -Fq -- "$identity_term" <<< "$identity_block" || {
+		printf 'Canonical Release Please identity block is missing %s.\n' "$identity_term" >&2
+		exit 1
+	}
+done
+if grep -Fq -- 'GITHUB_ACTOR' <<< "$identity_block"; then
+	echo 'Actor identity must not decide whether a canonical Release Please PR is classified as a candidate.' >&2
+	exit 1
+fi
 require "$quality" 'bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"'
 require "$quality" 'git checkout --detach "$pr_head_sha"'
 require "$quality" 'source_commit="$pr_head_sha"'
