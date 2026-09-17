@@ -111,7 +111,7 @@ jobs:
                       plugin_check: true
         services:
             mysql:
-                image: mysql:8.0
+                image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
                 env:
                     MYSQL_DATABASE: wordpress_test
                     MYSQL_ROOT_PASSWORD: root
@@ -166,7 +166,7 @@ jobs:
               shell: bash
               run: |
                   curl --fail --location --silent --show-error --output /tmp/install-wp-tests.sh \
-                      https://raw.githubusercontent.com/wp-cli/scaffold-command/main/templates/install-wp-tests.sh
+                      https://raw.githubusercontent.com/wp-cli/scaffold-command/4a464898bf96f9d5e19e9f04957a702bf9bdc191/templates/install-wp-tests.sh
                   bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 "${{ matrix.wordpress }}" true
 
             - name: Run WordPress integration tests
@@ -379,7 +379,7 @@ jobs:
                           exit 1
                       fi
                       if [[ "$match_count" -eq 1 ]]; then
-                          remote_digest="$(jq -er '.[0].digest' <<< "$matches")"
+                          remote_digest="$(jq -r '.[0].digest // ""' <<< "$matches")"
                           if [[ "$remote_digest" == "$local_digest" ]]; then
                               continue
                           fi
