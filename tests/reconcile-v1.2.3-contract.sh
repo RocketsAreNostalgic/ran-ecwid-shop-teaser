@@ -99,7 +99,7 @@ require 'releases/${RELEASE_ID}/assets?name=${asset_name}'
 require 'Read back exact tag, release, assets, and digests'
 require 'Reconcile Release Please PR labels only after exact publication readback'
 
-tag_guard=$(awk '/Historical v1.2.3 is fully qualified. Create exact tag/ { print NR; exit }' "$workflow")
+tag_guard=$(awk '/Historical v1.2.3 is fully qualified and awaiting exact owner-created tag/ { print NR; exit }' "$workflow")
 draft_create=$(awk '/Create exact draft release from the pre-existing verified tag/ { print NR; exit }' "$workflow")
 readback=$(awk '/Read back exact tag, release, assets, and digests/ { print NR; exit }' "$workflow")
 labels=$(awk '/Reconcile Release Please PR labels only after exact publication readback/ { print NR; exit }' "$workflow")
