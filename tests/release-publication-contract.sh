@@ -90,3 +90,15 @@ if release_admitted "$wrong_release_target"; then
 fi
 
 printf 'Focused release publication behavior passed.\n'
+
+draft_release=$(jq -nc \
+	--arg commit "$expected_commit" \
+	--arg tag "$expected_tag" \
+	--argjson digests "$expected_digests" \
+	'{id:4242,tag_name:$tag,target_commitish:$commit,draft:true,prerelease:false,immutable:false,assets:$digests}')
+jq -e --arg commit "$expected_commit" --arg tag "$expected_tag" \
+	'.tag_name == $tag and .target_commitish == $commit and .draft == true and .prerelease == false' \
+	<<< "$draft_release" >/dev/null
+
+immutable_complete=$(jq -c '.draft = false | .immutable = true' <<< "$valid_release")
+release_admitted "$immutable_complete"
