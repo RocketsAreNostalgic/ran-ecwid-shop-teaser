@@ -1,21 +1,24 @@
-# Protected WordPress.org deployment
+# WordPress.org deployment
 
-GitHub releases are the canonical release source. The Release Please workflow
-builds the exact release tag, verifies the ZIP, and attaches the ZIP, SHA-256,
-and file manifest to the GitHub release. The protected deployment job downloads
-those assets again before staging WordPress.org SVN.
+WordPress.org publication is currently disabled for this repository.
 
-Routine deployment is disabled while `deployment.json` has `enabled: false`.
-Do not set a `wordpressOrgSlug`, add environment secrets, or enable routine
-deployment until WordPress.org has approved the manually submitted ZIP and
-assigned the real slug.
+The normal GitHub release publisher does **not** deploy to WordPress.org and
+does not expose a manual deployment dispatch. Its responsibility ends after it
+has published and read back the exact GitHub tag, release, ZIP, SHA-256 file,
+and manifest.
 
-The one-time first deployment uses `workflow_dispatch` with an existing release
-tag and `deploy: true`. It may leave `enabled` false, but still requires approval
-through the `wordpress-org` GitHub Environment and its scoped
-`WORDPRESS_ORG_USERNAME` and `WORDPRESS_ORG_PASSWORD` secrets. Set
-`sync_assets: true` only for a deliberate listing-artwork sync.
+`deployment.json` remains disabled and records no active WordPress.org slug.
+Do not add deployment credentials or treat the existing deployment helper as an
+active publication path.
 
-After the first public update is verified, set `enabled: true` to permit routine
-deployment following a newly created GitHub release. Listing artwork remains
-outside the installable ZIP and is never copied to SVN `trunk` or release tags.
+If this plugin is later approved for WordPress.org, introduce deployment as a
+separate reviewed workflow. That workflow should:
+
+- run behind the protected `wordpress-org` GitHub Environment;
+- require explicit deployment authorization;
+- consume the already-published, exact GitHub release assets;
+- verify their tag, commit, manifest, and checksum before SVN mutation; and
+- keep listing-artwork synchronization an explicit opt-in operation.
+
+Do not re-add WordPress.org deployment, deployment inputs, or SVN credentials to
+the normal Release Please publisher.
