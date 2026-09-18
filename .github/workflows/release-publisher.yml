@@ -102,7 +102,6 @@ jobs:
                               'add | [.[] | select(
                                   .merged_at != null
                                   and .base.ref == "main"
-                                  and .head.repo.full_name == $repository
                                   and .merge_commit_sha == $commit
                               )]
                               | if length == 1 then .[0] else error("Expected exactly one merged PR for the qualified main commit.") end'
@@ -230,21 +229,20 @@ jobs:
                   bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"
 
                   workflow_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml" --jq '.id')"
-                  runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?head_sha=${head_sha}&per_page=100")"
-                  dispatch_title="Quality candidate PR #${candidate_number} @ ${head_sha}"
+                  runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?head_sha=${base_sha}&per_page=100")"
+                  dispatch_title="Quality candidate PR #${candidate_number} ${head_sha} @ trusted main ${base_sha}"
                   suppress_dispatch="$(jq -r \
                       --arg bot 'github-actions[bot]' \
                       --arg dispatch_title "$dispatch_title" \
-                      --arg head "$expected_head" \
                       --arg repository "$GITHUB_REPOSITORY" \
-                      --arg sha "$head_sha" \
+                      --arg sha "$base_sha" \
                       --argjson workflow_id "$workflow_id" \
                       'any(.workflow_runs[];
                           .workflow_id == $workflow_id
                           and .path == ".github/workflows/quality.yml"
                           and .event == "workflow_dispatch"
                           and .display_title == $dispatch_title
-                          and .head_branch == $head
+                          and .head_branch == "main"
                           and .head_repository.full_name == $repository
                           and .head_sha == $sha
                           and .actor.login == $bot
@@ -262,9 +260,10 @@ jobs:
                   fi
 
                   jq -nc \
-                      --arg ref "$expected_head" \
+                      --arg candidate_sha "$head_sha" \
+                      --arg ref "main" \
                       --arg release_pr "$candidate_number" \
-                      '{ref: $ref, inputs: {release_pr: $release_pr}}' \
+                      '{ref: $ref, inputs: {release_pr: $release_pr, candidate_sha: $candidate_sha}}' \
                       | gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml/dispatches" --input - >/dev/null
 
             - name: Resolve exact release for the qualified commit
@@ -332,13 +331,15 @@ jobs:
                       --arg tag "$tag_name" \
                       '.tag_name == $tag
                         and .target_commitish == $commit
-                        and .draft == false
+                        and (.draft | type) == "boolean"
                         and .prerelease == false
                         and ((has("immutable") | not) or (.immutable | type == "boolean"))' \
                       <<< "$release_json" >/dev/null
 
                   {
+                      printf 'draft=%s\n' "$(jq -r '.draft' <<< "$release_json")"
                       printf 'ready=true\n'
+                      printf 'release-id=%s\n' "$(jq -er '.id' <<< "$release_json")"
                       printf 'tag-name=%s\n' "$tag_name"
                       printf 'version=%s\n' "$version"
                   } >> "$GITHUB_OUTPUT"
@@ -359,6 +360,8 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}
                   RAN_QUALITY_RUN_ID: ${{ steps.quality.outputs.run-id }}
+                  RAN_RELEASE_DRAFT: ${{ steps.release_state.outputs.draft }}
+                  RAN_RELEASE_ID: ${{ steps.release_state.outputs.release-id }}
                   RAN_TAG_NAME: ${{ steps.release_state.outputs.tag-name }}
                   RAN_VERSION: ${{ steps.release_state.outputs.version }}
               shell: bash
@@ -433,6 +436,25 @@ jobs:
                           "dist/${manifest}" \
                           --clobber \
                           --repo "$GITHUB_REPOSITORY"
+                  fi
+
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_TAG_NAME}")"
+                  jq -e \
+                      --arg commit "$RAN_QUALITY_COMMIT" \
+                      --arg tag "$RAN_TAG_NAME" \
+                      --argjson expected "$expected_names" \
+                      '.tag_name == $tag
+                        and .target_commitish == $commit
+                        and (.draft | type) == "boolean"
+                        and .prerelease == false
+                        and ([.assets[].name] | sort) == $expected' \
+                      <<< "$release_json" >/dev/null
+                  remote_digests="$(jq -c '[.assets[] | {name, digest}] | sort_by(.name)' <<< "$release_json")"
+                  test "$remote_digests" = "$local_digests"
+
+                  if [[ "$RAN_RELEASE_DRAFT" == true ]]; then
+                      jq -nc '{draft:false}' \
+                          | gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}" --input - >/dev/null
                   fi
 
                   release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_TAG_NAME}")"
