@@ -54,7 +54,6 @@ jobs:
                       '.id == $run_id
                         and .run_attempt == $run_attempt
                         and .workflow_id == $workflow_id
-                        and .name == "Quality"
                         and .path == ".github/workflows/quality.yml"
                         and .event == "push"
                         and .status == "completed"
