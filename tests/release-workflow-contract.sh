@@ -67,13 +67,40 @@ require "$publisher" "github.event.workflow_run.conclusion == 'success'"
 require "$publisher" "github.event.workflow_run.head_branch == 'main'"
 require "$publisher" 'github.event.workflow_run.head_repository.id == github.repository_id'
 require "$publisher" 'github.event.workflow_run.head_repository.full_name == github.repository'
-require "$publisher" 'actions/runs/${RAN_QUALITY_RUN_ID}'
+test "$(grep -Fc -- '- name: Resolve exact successful Quality evidence' "$publisher")" -eq 1
+quality_evidence_block="$(
+	awk '
+		/^[[:space:]]*- name: Resolve exact successful Quality evidence[[:space:]]*$/ {
+			started = 1
+			match($0, /^[[:space:]]*/)
+			step_prefix = substr($0, RSTART, RLENGTH) "- "
+		}
+		started && printed && index($0, step_prefix) == 1 {
+			closed = 1
+			exit
+		}
+		started {
+			print
+			printed = 1
+		}
+		END {
+			if (!started || !closed) {
+				exit 1
+			}
+		}
+	' "$publisher"
+)"
+grep -Fq -- 'actions/runs/${RAN_QUALITY_RUN_ID}' <<< "$quality_evidence_block"
+grep -Fq -- '.workflow_id == $workflow_id' <<< "$quality_evidence_block"
+grep -Fq -- '.path == ".github/workflows/quality.yml"' <<< "$quality_evidence_block"
+grep -Fq -- '.head_sha == $commit' <<< "$quality_evidence_block"
+if grep -Fq -- '.name == "Quality"' <<< "$quality_evidence_block"; then
+	echo 'Quality evidence admission must not depend on the mutable run display name.' >&2
+	exit 1
+fi
+reject "$publisher" '.name == "Quality"'
 require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s'
 require "$publisher" "printf 'run-id=%s\\n'"
-require "$publisher" '.workflow_id == $workflow_id'
-require "$publisher" '.path == ".github/workflows/quality.yml"'
-reject "$publisher" '.name == "Quality"'
-require "$publisher" '.head_sha == $commit'
 require "$publisher" 'ref: ${{ steps.quality.outputs.commit }}'
 require "$publisher" 'persist-credentials: false'
 
