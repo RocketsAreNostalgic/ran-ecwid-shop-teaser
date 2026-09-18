@@ -52,6 +52,9 @@ require "$publisher" "github.event.workflow_run.head_branch == 'main'"
 require "$publisher" 'github.event.workflow_run.head_repository.id == github.repository_id'
 require "$publisher" 'github.event.workflow_run.head_repository.full_name == github.repository'
 require "$publisher" 'actions/runs/${RAN_QUALITY_RUN_ID}'
+require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s'
+require "$publisher" "printf 'run-attempt=%s\\n'"
+require "$publisher" "printf 'run-id=%s\\n'"
 require "$publisher" '.path == ".github/workflows/quality.yml"'
 require "$publisher" '.head_sha == $commit'
 require "$publisher" 'ref: ${{ steps.quality.outputs.commit }}'
