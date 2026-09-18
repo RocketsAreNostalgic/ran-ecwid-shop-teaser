@@ -76,6 +76,7 @@ require "$publisher" 'tests/release-publication-contract.sh'
 require "$publisher" 'scripts/validate-release-candidate.sh'
 require "$publisher" 'scripts/create-release-assets.sh'
 require "$publisher" 'tools/build-release.php'
+require "$publisher" 'wordpress-org/deployment.json'
 require "$publisher" 'release-please-config.json'
 require "$publisher" "printf 'admitted=false\\n'"
 require "$publisher" "printf 'admitted=true\\n'"
@@ -94,6 +95,10 @@ require "$publisher" 'actions/workflows/quality.yml/dispatches'
 require "$publisher" '.event == "workflow_dispatch"'
 require "$publisher" '.display_title == $dispatch_title'
 require "$publisher" '.actor.login == $bot'
+require "$publisher" 'test "$base_sha" = '${{ steps.quality.outputs.commit }}''
+require "$publisher" '.commit.verification.verified == true'
+require "$publisher" 'git fetch --no-tags origin'
+require "$publisher" 'bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"'
 require "$publisher" '{ref: $ref, inputs: {release_pr: $release_pr}}'
 
 require "$publisher" 'Resolve exact release for the qualified commit'
@@ -101,6 +106,7 @@ require "$publisher" 'RAN_RELEASE_CREATED: ${{ steps.release.outputs.release_cre
 require "$publisher" 'ready=false'
 require "$publisher" 'ready=true'
 require "$publisher" "if: steps.release_state.outputs.ready == 'true'"
+require "$publisher" "if: steps.admission.outputs.admitted == 'true'"
 require "$publisher" 'Download exact qualified release assets'
 require "$publisher" 'run-id: ${{ steps.quality.outputs.run-id }}'
 require "$publisher" 'schemaVersion == 3'
@@ -109,6 +115,9 @@ require "$publisher" 'git/ref/tags/${tag_name}'
 require "$publisher" '.target_commitish == $commit'
 require "$publisher" 'remote_digests='
 require "$publisher" 'test "$remote_digests" = "$local_digests"'
+require "$publisher" 'final_tag_ref='
+require "$publisher" 'final_tag_commit='
+require "$publisher" 'test "$final_tag_commit" = "$RAN_QUALITY_COMMIT"'
 
 reject "$publisher" 'rules/branches/main'
 reject "$publisher" '/rulesets'
