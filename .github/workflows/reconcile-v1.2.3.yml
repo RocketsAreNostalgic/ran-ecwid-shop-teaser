@@ -1,8 +1,7 @@
 name: Reconcile v1.2.3
 
 on:
-    push:
-        branches: [main]
+    workflow_dispatch:
 
 permissions: {}
 
@@ -21,7 +20,7 @@ env:
 jobs:
     rebuild:
         name: Rebuild exact historical v1.2.3 source
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.sha == '395dabd0546459aeebf5ab3d28b646870e95fb5a'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         runs-on: blacksmith-2vcpu-ubuntu-2404
         permissions: {}
         steps:
@@ -200,7 +199,7 @@ jobs:
             ${{ always()
                     && needs.rebuild.result == 'success'
                     && needs.compatibility.result == 'success'
-                    && github.event_name == 'push'
+                    && github.event_name == 'workflow_dispatch'
                     && github.ref == 'refs/heads/main' }}
         runs-on: blacksmith-2vcpu-ubuntu-2404
         permissions:
