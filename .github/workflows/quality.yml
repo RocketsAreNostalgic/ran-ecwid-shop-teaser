@@ -229,7 +229,7 @@ jobs:
 
             - name: Name exact release evidence artifact
               id: artifact
-              run: printf 'name=ran-ecwid-shop-teaser-ci-release-%s-%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+              run: printf 'name=ran-ecwid-shop-teaser-ci-release-%s\n' "$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
 
             - name: Upload exact release evidence
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -241,6 +241,7 @@ jobs:
                       dist/ran-ecwid-shop-teaser-${{ steps.release.outputs.version }}.manifest.json
                       dist/ran-ecwid-shop-teaser-ci-release.json
                   if-no-files-found: error
+                  overwrite: true
                   retention-days: 30
 
     compatibility:
@@ -304,11 +305,12 @@ jobs:
                       --arg commit '${{ needs.quality.outputs.source-commit }}' \
                       --arg sha256 '${{ needs.quality.outputs.archive-sha256 }}' \
                       --arg version '${{ needs.quality.outputs.version }}' \
-                      --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
                       --argjson run_id "$GITHUB_RUN_ID" \
                       '.schema == "ran-ecwid-shop-teaser-ci-release" and .schemaVersion == 3
                         and .sourceCommit == $commit and .version == $version and .sha256 == $sha256
-                        and .run.id == $run_id and .run.attempt == $run_attempt' \
+                        and .run.id == $run_id
+                        and (.run.attempt | type) == "number"
+                        and .run.attempt >= 1' \
                       "$metadata" >/dev/null
                   jq -e --arg commit '${{ needs.quality.outputs.source-commit }}' --arg version '${{ needs.quality.outputs.version }}' \
                       '.commit == $commit and .version == $version' "$manifest" >/dev/null
