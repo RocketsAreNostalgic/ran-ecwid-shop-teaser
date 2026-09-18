@@ -115,8 +115,9 @@ Please action from that qualified revision, dispatch read-only full `Quality`
 for the exact bot-owned release-PR head when needed, and read back the exact
 tag, release, and release assets after publication. Ecwid deliberately retains
 two bounded product-specific safeguards because of its prior release incident:
-exact bot-generated release-candidate admission and an independent clean
-abstention when a merged PR changes trusted release-control surfaces.
+exact bot-generated release-candidate admission, trusted-main validation of
+that candidate before dispatch, and an independent clean abstention when a
+merged PR changes trusted release-control surfaces.
 Repository rulesets enforce merge governance outside the publisher. Do not add
 live ruleset reconstruction, historical-release recovery state machines, or
 manual rebuild/publish authority to the normal release workflow.
