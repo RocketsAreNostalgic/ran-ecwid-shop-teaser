@@ -70,7 +70,9 @@ require "$publisher" 'github.event.workflow_run.head_repository.full_name == git
 require "$publisher" 'actions/runs/${RAN_QUALITY_RUN_ID}'
 require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s'
 require "$publisher" "printf 'run-id=%s\\n'"
+require "$publisher" '.workflow_id == $workflow_id'
 require "$publisher" '.path == ".github/workflows/quality.yml"'
+reject "$publisher" '.name == "Quality"'
 require "$publisher" '.head_sha == $commit'
 require "$publisher" 'ref: ${{ steps.quality.outputs.commit }}'
 require "$publisher" 'persist-credentials: false'
