@@ -179,6 +179,7 @@ jobs:
               if: steps.admission.outputs.admitted == 'true' && steps.current_main.outputs.current == 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}
               shell: bash
               run: |
                   set -euo pipefail
@@ -207,7 +208,7 @@ jobs:
                   head_sha="$(jq -er '.head.sha' <<< "$candidate")"
                   [[ "$base_sha" =~ ^[0-9a-f]{40}$ ]]
                   [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
-                  test "$base_sha" = '${{ steps.quality.outputs.commit }}'
+                  test "$base_sha" = "$RAN_QUALITY_COMMIT"
                   test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${expected_head}" --jq '.object.sha')" = "$head_sha"
 
                   commit_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}")"
