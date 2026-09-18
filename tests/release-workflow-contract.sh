@@ -94,6 +94,13 @@ require "$quality" 'name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress
 
 require "$release" 'push:'
 require "$release" 'rulesets?per_page=100'
+require "$release" "ruleset_pages="
+require "$release" "ruleset_ids="
+require "$release" "applicable_rulesets='[]'"
+require "$release" 'while IFS= read -r ruleset_id'
+require "$release" 'Expected exactly one active repository ruleset for the default branch.'
+require "$release" '.github/workflows/reconcile-v1.2.3.yml'
+require "$release" 'tests/reconcile-v1.2.3-contract.sh'
 require "$release" '.source_type == "Repository"'
 require "$release" '.source == $repository'
 require "$release" '.target == "branch"'
