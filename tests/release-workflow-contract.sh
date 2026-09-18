@@ -117,6 +117,8 @@ require "$publisher" 'bash scripts/validate-release-candidate.sh "$base_sha" "$h
 require "$publisher" '{ref: $ref, inputs: {release_pr: $release_pr}}'
 
 require "$publisher" 'Resolve exact release for the qualified commit'
+require "$publisher" 'gh release view "$tag_name" --repo "$GITHUB_REPOSITORY" --json databaseId'
+require "$publisher" 'releases/${release_id}'
 require "$publisher" "printf 'draft=%s\\n'"
 require "$publisher" "printf 'release-id=%s\\n'"
 require "$publisher" 'RAN_RELEASE_DRAFT: ${{ steps.release_state.outputs.draft }}'
@@ -131,7 +133,8 @@ require "$publisher" "if: steps.admission.outputs.admitted == 'true'"
 require "$publisher" 'Download exact qualified release assets'
 require "$publisher" 'run-id: ${{ steps.quality.outputs.run-id }}'
 require "$publisher" 'schemaVersion == 3'
-require "$publisher" 'gh release upload "$RAN_TAG_NAME"'
+require "$publisher" 'releases/assets/${existing_id}'
+require "$publisher" 'uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}/assets?name=${name}'
 require "$publisher" 'git/ref/tags/${tag_name}'
 require "$publisher" '.target_commitish == $commit'
 require "$publisher" 'remote_digests='
@@ -158,3 +161,5 @@ release_config="$repo_root/release-please-config.json"
 jq -e '."packages".".".draft == true
   and ."packages"."."."force-tag-creation" == true
   and ."packages"."."."draft-pull-request" == true' "$release_config" >/dev/null
+
+reject "$publisher" 'gh release upload "$RAN_TAG_NAME"'
