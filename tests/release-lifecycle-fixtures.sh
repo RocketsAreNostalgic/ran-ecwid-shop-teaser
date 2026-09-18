@@ -63,9 +63,13 @@ ruleset_targets_default_branch() {
 		"$1" >/dev/null
 }
 
-ruleset_targets_default_branch "$fixtures/ruleset-valid.json"
-if ruleset_targets_default_branch "$fixtures/ruleset-unrelated-branch.json"; then
-	echo 'An unrelated active branch ruleset was selected for default-branch admission.' >&2
+ruleset_detail_admitted() {
+	ruleset_targets_default_branch "$1" && ruleset_admitted "$1"
+}
+
+ruleset_detail_admitted "$fixtures/ruleset-valid.json"
+if ruleset_detail_admitted "$fixtures/ruleset-unrelated-branch.json"; then
+	echo 'An unrelated active branch ruleset was admitted as the default-branch governance contract.' >&2
 	exit 1
 fi
 
