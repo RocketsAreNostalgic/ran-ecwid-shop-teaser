@@ -148,9 +148,26 @@ jobs:
 
                   printf 'admitted=true\n' >> "$GITHUB_OUTPUT"
 
+            - name: Revalidate exact current main
+              id: current_main
+              if: steps.admission.outputs.admitted == 'true'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  live_main="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+                  if [[ "$live_main" != "$RAN_QUALITY_COMMIT" ]]; then
+                      printf 'current=false\n' >> "$GITHUB_OUTPUT"
+                      printf '::notice::Release Please abstained because main advanced from %s to %s.\n' "$RAN_QUALITY_COMMIT" "$live_main"
+                      exit 0
+                  fi
+                  printf 'current=true\n' >> "$GITHUB_OUTPUT"
+
             - name: Open, update, or publish the Release Please release
               id: release
-              if: steps.admission.outputs.admitted == 'true'
+              if: steps.admission.outputs.admitted == 'true' && steps.current_main.outputs.current == 'true'
               uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
@@ -158,7 +175,7 @@ jobs:
                   manifest-file: .release-please-manifest.json
 
             - name: Dispatch exact Release Please candidate Quality
-              if: steps.admission.outputs.admitted == 'true'
+              if: steps.admission.outputs.admitted == 'true' && steps.current_main.outputs.current == 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               shell: bash
@@ -229,7 +246,7 @@ jobs:
 
             - name: Resolve exact release for the qualified commit
               id: release_state
-              if: steps.admission.outputs.admitted == 'true'
+              if: steps.admission.outputs.admitted == 'true' && steps.current_main.outputs.current == 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}
