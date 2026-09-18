@@ -61,38 +61,6 @@ jobs:
                   set -euo pipefail
                   test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
-                  effective_rules="$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main")"
-                  jq -e '
-                      any(.[]; .type == "pull_request")
-                      and any(.[]; .type == "required_status_checks")
-                      and any(.[]; .type == "non_fast_forward")
-                      and any(.[]; .type == "deletion")
-                      and all(.[]; .type != "required_linear_history")
-                  ' <<< "$effective_rules" >/dev/null
-                  ruleset_id="$(jq -er '[.[] | select(.type == "pull_request") | .ruleset_id] | unique | if length == 1 then .[0] else error("Expected one pull-request ruleset.") end' <<< "$effective_rules")"
-                  ruleset="$(gh api "repos/${GITHUB_REPOSITORY}/rulesets/${ruleset_id}")"
-                  jq -e '
-                      .enforcement == "active"
-                      and has("bypass_actors")
-                      and (.bypass_actors | type == "array" and length == 0)
-                      and has("current_user_can_bypass")
-                      and .current_user_can_bypass == "never"
-                      and all(.rules[]; .type != "required_linear_history")
-                      and any(.rules[]; .type == "deletion")
-                      and any(.rules[]; .type == "non_fast_forward")
-                      and any(.rules[];
-                          .type == "pull_request"
-                          and (.parameters.allowed_merge_methods | sort) == ["merge", "squash"]
-                          and .parameters.dismiss_stale_reviews_on_push == true
-                          and .parameters.required_review_thread_resolution == true
-                          and .parameters.require_last_push_approval == false)
-                      and any(.rules[]; .type == "required_status_checks"
-                          and .parameters.strict_required_status_checks_policy == true
-                          and (.parameters.required_status_checks | length) == 1
-                          and .parameters.required_status_checks[0].context == "quality"
-                          and .parameters.required_status_checks[0].integration_id == 15368)
-                  ' <<< "$ruleset" >/dev/null
-
                   pr_json="$(
                       gh api --paginate --slurp -H 'Accept: application/vnd.github+json' \
                           "repos/${GITHUB_REPOSITORY}/pulls?state=closed&base=main&per_page=100" \
@@ -135,6 +103,7 @@ jobs:
                   files_json="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100")"
                   for path in \
                       .github/workflows/quality.yml \
+                      .github/workflows/release-publisher.yml \
                       .github/workflows/release-please.yml \
                       scripts/create-release-assets.sh \
                       scripts/validate-release-candidate.sh \
@@ -157,6 +126,52 @@ jobs:
                           fi
                       done
                   fi
+
+                  rulesets="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/rulesets?per_page=100")"
+                  ruleset_id="$(
+                      jq -cer \
+                          --arg repository "$GITHUB_REPOSITORY" \
+                          'add | [.[] | select(
+                              .source_type == "Repository"
+                              and .source == $repository
+                              and .target == "branch"
+                              and .enforcement == "active"
+                          )]
+                          | if length == 1
+                            then .[0].id
+                            else error("Expected exactly one active repository branch ruleset.")
+                            end' \
+                          <<< "$rulesets"
+                  )"
+                  ruleset="$(gh api "repos/${GITHUB_REPOSITORY}/rulesets/${ruleset_id}")"
+                  jq -e \
+                      --arg repository "$GITHUB_REPOSITORY" \
+                      '
+                      .source_type == "Repository"
+                      and .source == $repository
+                      and .target == "branch"
+                      and .enforcement == "active"
+                      and .conditions.ref_name.exclude == []
+                      and (.conditions.ref_name.include | sort) == ["~DEFAULT_BRANCH"]
+                      and has("bypass_actors")
+                      and (.bypass_actors | type == "array" and length == 0)
+                      and has("current_user_can_bypass")
+                      and .current_user_can_bypass == "never"
+                      and all(.rules[]; .type != "required_linear_history")
+                      and any(.rules[]; .type == "deletion")
+                      and any(.rules[]; .type == "non_fast_forward")
+                      and any(.rules[];
+                          .type == "pull_request"
+                          and (.parameters.allowed_merge_methods | sort) == ["merge", "squash"]
+                          and .parameters.dismiss_stale_reviews_on_push == true
+                          and .parameters.required_review_thread_resolution == true
+                          and .parameters.require_last_push_approval == false)
+                      and any(.rules[]; .type == "required_status_checks"
+                          and .parameters.strict_required_status_checks_policy == true
+                          and (.parameters.required_status_checks | length) == 1
+                          and .parameters.required_status_checks[0].context == "quality"
+                          and .parameters.required_status_checks[0].integration_id == 15368)
+                  ' <<< "$ruleset" >/dev/null
 
                   workflow_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml" --jq '.id')"
                   runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?head_sha=${head_sha}&status=completed&per_page=100")"

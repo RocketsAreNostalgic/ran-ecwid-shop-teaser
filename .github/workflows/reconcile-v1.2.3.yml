@@ -21,7 +21,7 @@ env:
 jobs:
     rebuild:
         name: Rebuild exact historical v1.2.3 source
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.sha == '395dabd0546459aeebf5ab3d28b646870e95fb5a'
         runs-on: blacksmith-2vcpu-ubuntu-2404
         permissions: {}
         steps:
