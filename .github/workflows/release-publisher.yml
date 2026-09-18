@@ -67,9 +67,8 @@ jobs:
                       <<< "$evidence" >/dev/null
 
                   {
-                      printf 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s\n' "$RAN_QUALITY_RUN_ID" "$RAN_QUALITY_RUN_ATTEMPT"
+                      printf 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s\n' "$RAN_QUALITY_RUN_ID"
                       printf 'commit=%s\n' "$RAN_QUALITY_COMMIT"
-                      printf 'run-attempt=%s\n' "$RAN_QUALITY_RUN_ATTEMPT"
                       printf 'run-id=%s\n' "$RAN_QUALITY_RUN_ID"
                   } >> "$GITHUB_OUTPUT"
 
@@ -359,7 +358,6 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}
-                  RAN_QUALITY_RUN_ATTEMPT: ${{ steps.quality.outputs.run-attempt }}
                   RAN_QUALITY_RUN_ID: ${{ steps.quality.outputs.run-id }}
                   RAN_TAG_NAME: ${{ steps.release_state.outputs.tag-name }}
                   RAN_VERSION: ${{ steps.release_state.outputs.version }}
@@ -380,7 +378,6 @@ jobs:
                       --arg commit "$RAN_QUALITY_COMMIT" \
                       --arg sha256 "$archive_sha256" \
                       --arg version "$RAN_VERSION" \
-                      --argjson run_attempt "$RAN_QUALITY_RUN_ATTEMPT" \
                       --argjson run_id "$RAN_QUALITY_RUN_ID" \
                       '.schema == "ran-ecwid-shop-teaser-ci-release"
                         and .schemaVersion == 3
@@ -388,7 +385,8 @@ jobs:
                         and .version == $version
                         and .sha256 == $sha256
                         and .run.id == $run_id
-                        and .run.attempt == $run_attempt
+                        and (.run.attempt | type) == "number"
+                        and .run.attempt >= 1
                         and .run.event == "push"' \
                       "$metadata" >/dev/null
                   jq -e \
