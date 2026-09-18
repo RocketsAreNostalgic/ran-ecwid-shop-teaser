@@ -77,8 +77,12 @@ require "$publisher" 'persist-credentials: false'
 
 require "$publisher" 'Admit publisher for exact reviewed merge'
 require "$publisher" 'Expected exactly one merged PR for the qualified main commit.'
-reject "$publisher" 'and .head.repo.full_name == $repository
-                                  and .merge_commit_sha == $commit'
+merged_pr_block="$(awk '/pr_json="\$\(/,/pr_number=/' "$publisher")"
+grep -Fq 'and .merge_commit_sha == $commit' <<< "$merged_pr_block"
+if grep -Fq '.head.repo.full_name == $repository' <<< "$merged_pr_block"; then
+	echo 'Merged-PR reconstruction must admit forked pull requests.' >&2
+	exit 1
+fi
 require "$publisher" '.github/workflows/quality.yml'
 require "$publisher" '.github/workflows/release-publisher.yml'
 require "$publisher" 'tests/release-workflow-contract.sh'
