@@ -325,7 +325,9 @@ jobs:
                       exit 0
                   fi
 
-                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag_name}")"
+                  release_id="$(gh release view "$tag_name" --repo "$GITHUB_REPOSITORY" --json databaseId --jq '.databaseId')"
+                  [[ "$release_id" =~ ^[1-9][0-9]*$ ]]
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}")"
                   jq -e \
                       --arg commit "$RAN_QUALITY_COMMIT" \
                       --arg tag "$tag_name" \
@@ -339,7 +341,7 @@ jobs:
                   {
                       printf 'draft=%s\n' "$(jq -r '.draft' <<< "$release_json")"
                       printf 'ready=true\n'
-                      printf 'release-id=%s\n' "$(jq -er '.id' <<< "$release_json")"
+                      printf 'release-id=%s\n' "$release_id"
                       printf 'tag-name=%s\n' "$tag_name"
                       printf 'version=%s\n' "$version"
                   } >> "$GITHUB_OUTPUT"
@@ -421,7 +423,7 @@ jobs:
                       done | jq -sc 'sort_by(.name)'
                   )"
 
-                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_TAG_NAME}")"
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}")"
                   actual_names="$(jq -c '[.assets[].name] | sort' <<< "$release_json")"
                   remote_digests="$(jq -c '[.assets[] | {name, digest}] | sort_by(.name)' <<< "$release_json")"
                   immutable="$(jq -r '.immutable // false' <<< "$release_json")"
@@ -430,15 +432,22 @@ jobs:
                       test "$immutable" = false
                       extra_assets="$(jq -c --argjson expected "$expected_names" '[.assets[].name] - $expected' <<< "$release_json")"
                       test "$extra_assets" = '[]'
-                      gh release upload "$RAN_TAG_NAME" \
-                          "dist/${archive}" \
-                          "dist/${checksum}" \
-                          "dist/${manifest}" \
-                          --clobber \
-                          --repo "$GITHUB_REPOSITORY"
+                      for name in "$archive" "$checksum" "$manifest"; do
+                          existing_id="$(jq -r --arg name "$name" '.assets[]? | select(.name == $name) | .id' <<< "$release_json")"
+                          if [[ -n "$existing_id" ]]; then
+                              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${existing_id}" >/dev/null
+                          fi
+                          curl --fail --silent --show-error \
+                              --request POST \
+                              -H "Authorization: Bearer ${GH_TOKEN}" \
+                              -H 'Content-Type: application/octet-stream' \
+                              --data-binary "@dist/${name}" \
+                              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}/assets?name=${name}" \
+                              >/dev/null
+                      done
                   fi
 
-                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_TAG_NAME}")"
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}")"
                   jq -e \
                       --arg commit "$RAN_QUALITY_COMMIT" \
                       --arg tag "$RAN_TAG_NAME" \
@@ -457,7 +466,7 @@ jobs:
                           | gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}" --input - >/dev/null
                   fi
 
-                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RAN_TAG_NAME}")"
+                  release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}")"
                   jq -e \
                       --arg commit "$RAN_QUALITY_COMMIT" \
                       --arg tag "$RAN_TAG_NAME" \
