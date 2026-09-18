@@ -107,6 +107,15 @@ The build and quality workflows derive archive filenames from the plugin
 metadata and verify that version against the release tag. Keep packaging or
 WordPress.org deployment separate from Release Please.
 
+The privileged release publisher follows the Starter topology: consume an exact
+successful same-repository `Quality` run for `main`, run the pinned Release
+Please action from that qualified revision, dispatch read-only full `Quality`
+for the exact bot-owned release-PR head when needed, and read back the exact
+tag, release, and release assets after publication. Repository rulesets enforce
+merge governance outside the publisher. Do not add live ruleset reconstruction,
+historical-release recovery state machines, or manual rebuild/publish authority
+to the normal release workflow.
+
 Treat the existing initial-release preparation commit as the bootstrap
 boundary, preserve version `1.0.0` in the initial manifest, and review the
 first generated release PR before merging it.
