@@ -47,6 +47,9 @@ require "$quality" 'git checkout --detach "$pr_head_sha"'
 require "$quality" 'bash scripts/create-release-assets.sh "v${version}"'
 require "$quality" 'schemaVersion: 3'
 require "$quality" 'Upload exact release evidence'
+require "$quality" "printf 'name=ran-ecwid-shop-teaser-ci-release-%s\\n'"
+require "$quality" 'overwrite: true'
+require "$quality" '.run.attempt >= 1'
 require "$quality" '4a464898bf96f9d5e19e9f04957a702bf9bdc191/templates/install-wp-tests.sh'
 
 require "$publisher" 'workflow_run:'
@@ -59,8 +62,7 @@ require "$publisher" "github.event.workflow_run.head_branch == 'main'"
 require "$publisher" 'github.event.workflow_run.head_repository.id == github.repository_id'
 require "$publisher" 'github.event.workflow_run.head_repository.full_name == github.repository'
 require "$publisher" 'actions/runs/${RAN_QUALITY_RUN_ID}'
-require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s'
-require "$publisher" "printf 'run-attempt=%s\\n'"
+require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s'
 require "$publisher" "printf 'run-id=%s\\n'"
 require "$publisher" '.path == ".github/workflows/quality.yml"'
 require "$publisher" '.head_sha == $commit'
