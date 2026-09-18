@@ -104,9 +104,13 @@ that triggering run, checks out the exact qualified commit without persisted
 credentials, and lets the pinned Release Please action open/update the release
 PR or prepare a merged release. Release Please PRs are created as drafts.
 The publisher validates the candidate from trusted `main`, then dispatches the
-trusted `main` Quality workflow with the exact candidate SHA as data. After
-that exact trusted candidate run succeeds, the repository owner marks the draft
-release PR ready and normal-merges that unchanged head.
+trusted `main` Quality workflow with the exact candidate SHA as data. Do not
+use GitHub's **Update branch** action or manually merge `main` into the
+Release Please branch: that changes the candidate into a human-authored merge
+commit and Quality intentionally rejects it. Let an admitted publisher refresh
+the bot-generated candidate after `main` advances. After that exact trusted
+candidate run succeeds, the repository owner marks the draft release PR ready
+and normal-merges that unchanged head.
 
 When a release is cut, Release Please creates a draft GitHub Release and its
 exact tag. The publisher downloads the exact ZIP, SHA-256 file, and manifest
