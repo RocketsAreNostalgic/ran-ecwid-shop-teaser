@@ -115,9 +115,10 @@ qualified commit/tag, attaches and verifies them while the release is mutable,
 then publishes the draft and reads back the exact tag, release target, asset
 names, and SHA-256 digests. This remains safe if immutable releases are enabled.
 
-The unpublished `1.2.3` proposal was superseded and has no tag or GitHub
-Release. The next real publication is expected to be `v1.2.4`. WordPress.org
-publication remains separate and disabled.
+The unpublished `1.2.3` proposal was superseded and intentionally has no tag
+or GitHub Release. Published release history therefore skips `v1.2.3` and
+continues from the next generated version. WordPress.org publication remains
+separate and disabled.
 
 ## License
 
