@@ -38,6 +38,37 @@ ruleset_admitted() {
 	' "$1" >/dev/null
 }
 
+ruleset_summary_ids="$(
+	jq -cer \
+		--arg repository "$repository" \
+		'[add[] | select(
+			.source_type == "Repository"
+			and .source == $repository
+			and .target == "branch"
+			and .enforcement == "active"
+		) | .id] | unique' \
+		"$fixtures/ruleset-collection-pages.json"
+)"
+test "$ruleset_summary_ids" = '[20942702,20942703]'
+
+ruleset_targets_default_branch() {
+	jq -e \
+		--arg repository "$repository" \
+		'.source_type == "Repository"
+		 and .source == $repository
+		 and .target == "branch"
+		 and .enforcement == "active"
+		 and .conditions.ref_name.exclude == []
+		 and (.conditions.ref_name.include | sort) == ["~DEFAULT_BRANCH"]' \
+		"$1" >/dev/null
+}
+
+ruleset_targets_default_branch "$fixtures/ruleset-valid.json"
+if ruleset_targets_default_branch "$fixtures/ruleset-unrelated-branch.json"; then
+	echo 'An unrelated active branch ruleset was selected for default-branch admission.' >&2
+	exit 1
+fi
+
 ruleset_admitted "$fixtures/ruleset-valid.json"
 if ruleset_admitted "$fixtures/ruleset-missing-bypass-actors.json"; then
 	echo 'A ruleset with a redacted bypass_actors field was admitted.' >&2
