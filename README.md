@@ -90,6 +90,30 @@ must preserve their visible state. Category IDs are scoped to their resolved
 Ecwid store. Do not expose Ecwid API tokens in public markup or logs; public
 fallbacks must not reveal diagnostic details.
 
+## Release lifecycle
+
+`Quality` is the single qualification authority for pull requests, trusted pushes
+to `main`, and the exact Release Please candidate branch. It runs the shared
+WordPress-plugin baseline, repository source/generated checks, the WordPress
+6.5 / PHP 8.0 compatibility floor, current WordPress / PHP 8.3 coverage,
+Plugin Check, and fresh installation of the exact distributable ZIP.
+
+The privileged `Release Please` publisher runs only after a successful
+same-repository `Quality` run for an exact `main` revision. It authenticates
+that triggering run, checks out the exact qualified commit without persisted
+credentials, and lets the pinned Release Please action open/update the release
+PR or publish a merged release. Release Please candidate PRs receive a
+read-only full `Quality` run by explicit workflow dispatch.
+
+When a release is created, the publisher downloads the exact ZIP, SHA-256 file,
+and manifest produced by the triggering `Quality` run, proves that they belong
+to the qualified commit/tag, attaches them to the GitHub Release, and reads back
+the exact tag, release target, asset names, and SHA-256 digests.
+
+The unpublished `1.2.3` proposal was superseded and has no tag or GitHub
+Release. The next real publication is expected to be `v1.2.4`. WordPress.org
+publication remains separate and disabled.
+
 ## License
 
 RAN Ecwid Shop Teaser is licensed under the [GNU General Public License v2.0
