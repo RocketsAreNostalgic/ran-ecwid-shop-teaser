@@ -38,7 +38,7 @@ require "$quality" "format('Quality candidate PR #{0} @ {1}', inputs.release_pr,
 require "$quality" 'name: quality'
 require "$quality" 'if: ${{ always() }}'
 require "$quality" 'Authenticate canonical Release Please candidate'
-require "$quality" "test \"$GITHUB_ACTOR\" = 'github-actions[bot]'"
+require "$quality" 'test "$GITHUB_ACTOR" = '\''github-actions[bot]'\'''
 require "$quality" '.commit.verification.verified == true'
 require "$quality" '.commit.verification.reason == "valid"'
 require "$quality" '.parents[0].sha == $base'
@@ -79,6 +79,11 @@ require "$publisher" 'tools/build-release.php'
 require "$publisher" 'release-please-config.json'
 require "$publisher" "printf 'admitted=false\\n'"
 require "$publisher" "printf 'admitted=true\\n'"
+require "$publisher" 'Revalidate exact current main'
+require "$publisher" 'git/ref/heads/main'
+require "$publisher" "printf 'current=false\\n'"
+require "$publisher" "printf 'current=true\\n'"
+require "$publisher" "steps.current_main.outputs.current == 'true'"
 
 require "$publisher" 'googleapis/release-please-action@'
 require "$publisher" "if: steps.admission.outputs.admitted == 'true'"
