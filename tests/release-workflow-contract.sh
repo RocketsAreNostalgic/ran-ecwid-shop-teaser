@@ -98,6 +98,7 @@ if grep -Fq -- '.name == "Quality"' <<< "$quality_evidence_block"; then
 	echo 'Quality evidence admission must not depend on the mutable run display name.' >&2
 	exit 1
 fi
+reject "$publisher" '.name == "Quality"'
 require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s'
 require "$publisher" "printf 'run-id=%s\\n'"
 require "$publisher" 'ref: ${{ steps.quality.outputs.commit }}'
