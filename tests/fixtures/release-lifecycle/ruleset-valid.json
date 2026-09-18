@@ -1,14 +1,34 @@
 {
+	"id": 20942702,
+	"name": "Protect default branch",
+	"target": "branch",
+	"source_type": "Repository",
+	"source": "RocketsAreNostalgic/ran-ecwid-shop-teaser",
 	"enforcement": "active",
+	"conditions": {
+		"ref_name": {
+			"exclude": [],
+			"include": [
+				"~DEFAULT_BRANCH"
+			]
+		}
+	},
 	"bypass_actors": [],
 	"current_user_can_bypass": "never",
 	"rules": [
-		{ "type": "deletion" },
-		{ "type": "non_fast_forward" },
+		{
+			"type": "deletion"
+		},
+		{
+			"type": "non_fast_forward"
+		},
 		{
 			"type": "pull_request",
 			"parameters": {
-				"allowed_merge_methods": ["merge", "squash"],
+				"allowed_merge_methods": [
+					"merge",
+					"squash"
+				],
 				"dismiss_stale_reviews_on_push": true,
 				"required_review_thread_resolution": true,
 				"require_last_push_approval": false
@@ -19,7 +39,10 @@
 			"parameters": {
 				"strict_required_status_checks_policy": true,
 				"required_status_checks": [
-					{ "context": "quality", "integration_id": 15368 }
+					{
+						"context": "quality",
+						"integration_id": 15368
+					}
 				]
 			}
 		}
