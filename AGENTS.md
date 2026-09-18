@@ -111,9 +111,12 @@ WordPress.org deployment separate from Release Please.
 
 The privileged release publisher follows the Starter topology: consume an exact
 successful same-repository `Quality` run for `main`, run the pinned Release
-Please action from that qualified revision, dispatch read-only full `Quality`
-for the exact bot-owned release-PR head when needed, and read back the exact
-tag, release, and release assets after publication. Ecwid deliberately retains
+Please action from that qualified revision, validate the exact bot-owned
+release-PR head from trusted `main`, dispatch the trusted `main` Quality
+workflow with that candidate SHA as data, and read back the exact tag, release,
+and release assets after publication. Release Please PRs remain drafts until
+the owner confirms that exact trusted candidate Quality run succeeded, then
+marks the unchanged PR ready for a normal merge. Ecwid deliberately retains
 two bounded product-specific safeguards because of its prior release incident:
 exact bot-generated release-candidate admission, trusted-main validation of
 that candidate before dispatch, and an independent clean abstention when a
