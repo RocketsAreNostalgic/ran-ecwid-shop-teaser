@@ -34,11 +34,17 @@ require "$quality" 'push:'
 require "$quality" '- main'
 require "$quality" 'workflow_dispatch:'
 require "$quality" 'release_pr:'
-require "$quality" "format('Quality candidate PR #{0} @ {1}', inputs.release_pr, github.sha)"
+require "$quality" 'candidate_sha:'
+require "$quality" "format('Quality candidate PR #{0} {1} @ trusted main {2}', inputs.release_pr, inputs.candidate_sha, github.sha)"
 require "$quality" 'name: quality'
 require "$quality" 'if: ${{ always() }}'
 require "$quality" 'Authenticate canonical Release Please candidate'
+require "$quality" 'RAN_CANDIDATE_SHA: ${{ inputs.candidate_sha }}'
 require "$quality" 'test "$GITHUB_ACTOR" = '\''github-actions[bot]'\'''
+require "$quality" "test \"$GITHUB_REF\" = 'refs/heads/main'"
+require "$quality" '.draft == true'
+require "$quality" '.base.sha == $base'
+require "$quality" '.head.sha == $candidate'
 require "$quality" '.commit.verification.verified == true'
 require "$quality" '.commit.verification.reason == "valid"'
 require "$quality" '.parents[0].sha == $base'
@@ -71,6 +77,8 @@ require "$publisher" 'persist-credentials: false'
 
 require "$publisher" 'Admit publisher for exact reviewed merge'
 require "$publisher" 'Expected exactly one merged PR for the qualified main commit.'
+reject "$publisher" 'and .head.repo.full_name == $repository
+                                  and .merge_commit_sha == $commit'
 require "$publisher" '.github/workflows/quality.yml'
 require "$publisher" '.github/workflows/release-publisher.yml'
 require "$publisher" 'tests/release-workflow-contract.sh'
@@ -91,6 +99,10 @@ require "$publisher" "steps.current_main.outputs.current == 'true'"
 require "$publisher" 'googleapis/release-please-action@'
 require "$publisher" "if: steps.admission.outputs.admitted == 'true'"
 require "$publisher" "expected_head='release-please--branches--main--components--ran-ecwid-shop-teaser'"
+require "$publisher" 'runs?head_sha=${base_sha}&per_page=100'
+require "$publisher" 'and .head_branch == "main"'
+require "$publisher" '{ref: $ref, inputs: {release_pr: $release_pr, candidate_sha: $candidate_sha}}'
+require "$publisher" '--arg ref "main"'
 require "$publisher" '.user.login == $bot'
 require "$publisher" '.head.repo.full_name == $repository'
 require "$publisher" 'actions/workflows/quality.yml/dispatches'
@@ -105,6 +117,12 @@ require "$publisher" 'bash scripts/validate-release-candidate.sh "$base_sha" "$h
 require "$publisher" '{ref: $ref, inputs: {release_pr: $release_pr}}'
 
 require "$publisher" 'Resolve exact release for the qualified commit'
+require "$publisher" "printf 'draft=%s\\n'"
+require "$publisher" "printf 'release-id=%s\\n'"
+require "$publisher" 'RAN_RELEASE_DRAFT: ${{ steps.release_state.outputs.draft }}'
+require "$publisher" 'RAN_RELEASE_ID: ${{ steps.release_state.outputs.release-id }}'
+require "$publisher" "jq -nc '{draft:false}'"
+require "$publisher" 'releases/${RAN_RELEASE_ID}'
 require "$publisher" 'RAN_RELEASE_CREATED: ${{ steps.release.outputs.release_created }}'
 require "$publisher" 'ready=false'
 require "$publisher" 'ready=true'
@@ -135,3 +153,8 @@ if grep -Eq '^[[:space:]]+workflow_dispatch:' "$publisher"; then
 fi
 
 printf 'Simplified release workflow contract passed.\n'
+
+release_config="$repo_root/release-please-config.json"
+jq -e '."packages".".".draft == true
+  and ."packages"."."."force-tag-creation" == true
+  and ."packages"."."."draft-pull-request" == true' "$release_config" >/dev/null
