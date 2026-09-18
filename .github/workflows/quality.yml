@@ -1,5 +1,8 @@
 name: Quality
-run-name: ${{ format('Quality {0} @ {1}', github.event_name, github.sha) }}
+run-name: >-
+    ${{ github.event_name == 'workflow_dispatch' && inputs.release_pr != ''
+        && format('Quality candidate PR #{0} @ {1}', inputs.release_pr, github.sha)
+        || format('Quality {0} @ {1}', github.event_name, github.sha) }}
 
 on:
     pull_request:
@@ -7,6 +10,11 @@ on:
         branches:
             - main
     workflow_dispatch:
+        inputs:
+            release_pr:
+                description: Exact open Release Please PR number to authenticate at this branch head
+                required: false
+                type: string
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -14,6 +22,7 @@ concurrency:
 
 permissions:
     contents: read
+    pull-requests: read
 
 jobs:
     baseline:
@@ -42,6 +51,85 @@ jobs:
               run: |
                   set -euo pipefail
                   test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+            - name: Authenticate canonical Release Please candidate
+              id: admission
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RAN_DISPATCH_PR: ${{ inputs.release_pr }}
+                  RAN_PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+                  RAN_PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+                  RAN_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+                  RAN_PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+                  RAN_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+                  RAN_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+              run: |
+                  set -euo pipefail
+                  pr_author="${RAN_PR_AUTHOR:-}"
+                  pr_base_ref="${RAN_PR_BASE_REF:-}"
+                  pr_base_sha="${RAN_PR_BASE_SHA:-}"
+                  pr_head_ref="${RAN_PR_HEAD_REF:-}"
+                  pr_head_repository="${RAN_PR_HEAD_REPOSITORY:-}"
+                  pr_head_sha="${RAN_PR_HEAD_SHA:-}"
+
+                  if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
+                      [[ "$RAN_DISPATCH_PR" =~ ^[1-9][0-9]*$ ]]
+                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
+                      pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RAN_DISPATCH_PR}")"
+                      jq -e \
+                          --arg bot 'github-actions[bot]' \
+                          --arg head 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
+                          --arg repository "$GITHUB_REPOSITORY" \
+                          --arg sha "$GITHUB_SHA" \
+                          '.state == "open"
+                            and .user.login == $bot
+                            and .base.ref == "main"
+                            and .head.ref == $head
+                            and .head.repo.full_name == $repository
+                            and .head.sha == $sha' \
+                          <<< "$pr_json" >/dev/null
+                      pr_author="$(jq -er '.user.login' <<< "$pr_json")"
+                      pr_base_ref="$(jq -er '.base.ref' <<< "$pr_json")"
+                      pr_base_sha="$(jq -er '.base.sha' <<< "$pr_json")"
+                      pr_head_ref="$(jq -er '.head.ref' <<< "$pr_json")"
+                      pr_head_repository="$(jq -er '.head.repo.full_name' <<< "$pr_json")"
+                      pr_head_sha="$(jq -er '.head.sha' <<< "$pr_json")"
+                      test "$GITHUB_REF" = "refs/heads/${pr_head_ref}"
+                  fi
+
+                  canonical_release_pr=false
+                  if [[ "$pr_author" == 'github-actions[bot]' \
+                      && "$pr_base_ref" == main \
+                      && "$pr_head_ref" == 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
+                      && "$pr_head_repository" == "$GITHUB_REPOSITORY" ]]; then
+                      canonical_release_pr=true
+                  fi
+
+                  if [[ "$canonical_release_pr" == true ]]; then
+                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
+                      commit_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${pr_head_sha}")"
+                      jq -e \
+                          --arg base "$pr_base_sha" \
+                          --arg bot 'github-actions[bot]' \
+                          --arg head "$pr_head_sha" \
+                          --arg committer 'web-flow' \
+                          '.sha == $head
+                            and .author.login == $bot
+                            and .committer.login == $committer
+                            and .commit.verification.verified == true
+                            and .commit.verification.reason == "valid"
+                            and (.parents | length) == 1
+                            and .parents[0].sha == $base' \
+                          <<< "$commit_json" >/dev/null
+                      bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"
+                      git checkout --detach "$pr_head_sha"
+                  elif [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
+                      echo '::error::The dispatched release candidate did not satisfy the canonical PR identity.'
+                      exit 1
+                  fi
+
+                  printf 'source-commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
             - name: Set up PHP
               uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
@@ -73,11 +161,13 @@ jobs:
             - name: Build exact release evidence
               id: release
               shell: bash
+              env:
+                  RAN_EXPECTED_COMMIT: ${{ steps.admission.outputs.source-commit }}
               run: |
                   set -euo pipefail
                   source_commit="$(git rev-parse HEAD)"
                   source_tree="$(git rev-parse 'HEAD^{tree}')"
-                  test "$source_commit" = "$GITHUB_SHA"
+                  test "$source_commit" = "$RAN_EXPECTED_COMMIT"
 
                   version="$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' ran-ecwid-shop-teaser.php)"
                   test -n "$version"
@@ -228,7 +318,7 @@ jobs:
             - name: Install WordPress integration-test environment
               run: |
                   curl --fail --location --silent --show-error --output /tmp/install-wp-tests.sh \
-                      https://raw.githubusercontent.com/wp-cli/scaffold-command/main/templates/install-wp-tests.sh
+                      https://raw.githubusercontent.com/wp-cli/scaffold-command/4a464898bf96f9d5e19e9f04957a702bf9bdc191/templates/install-wp-tests.sh
                   bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }} true
 
             - name: Run WordPress integration tests
