@@ -41,7 +41,7 @@ require "$quality" 'if: ${{ always() }}'
 require "$quality" 'Authenticate canonical Release Please candidate'
 require "$quality" 'RAN_CANDIDATE_SHA: ${{ inputs.candidate_sha }}'
 require "$quality" 'test "$GITHUB_ACTOR" = '\''github-actions[bot]'\'''
-require "$quality" "test \"$GITHUB_REF\" = 'refs/heads/main'"
+require "$quality" 'test "$GITHUB_REF" = '\''refs/heads/main'\'''
 require "$quality" '.draft == true'
 require "$quality" '.base.sha == $base'
 require "$quality" '.head.sha == $candidate'
