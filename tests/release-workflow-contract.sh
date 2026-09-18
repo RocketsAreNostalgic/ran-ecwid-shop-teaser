@@ -3,20 +3,16 @@
 set -euo pipefail
 
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-quality="$repo_root/.github/workflows/quality.yml"
-release="$repo_root/.github/workflows/release-publisher.yml"
-legacy_release="$repo_root/.github/workflows/release-please.yml"
-if [[ -e "$legacy_release" ]]; then
-	echo 'Legacy dispatchable release workflow path must remain absent.' >&2
-	exit 1
-fi
-deploy="$repo_root/scripts/deploy-wordpress-org.sh"
+quality="${repo_root}/.github/workflows/quality.yml"
+publisher="${repo_root}/.github/workflows/release-publisher.yml"
+legacy_publisher="${repo_root}/.github/workflows/release-please.yml"
+reconciliation="${repo_root}/.github/workflows/reconcile-v1.2.3.yml"
 
 require() {
 	local file=$1
 	local text=$2
 	grep -Fq -- "$text" "$file" || {
-		printf 'Missing workflow contract in %s: %s\n' "$file" "$text" >&2
+		printf 'Missing release workflow contract in %s: %s\n' "$file" "$text" >&2
 		exit 1
 	}
 }
@@ -25,197 +21,148 @@ reject() {
 	local file=$1
 	local text=$2
 	if grep -Fq -- "$text" "$file"; then
-		printf 'Forbidden workflow contract in %s: %s\n' "$file" "$text" >&2
+		printf 'Forbidden release workflow contract in %s: %s\n' "$file" "$text" >&2
 		exit 1
 	fi
 }
 
-# These are literal workflow contracts, not shell expressions.
+test ! -e "$legacy_publisher"
+test ! -e "$reconciliation"
+
 require "$quality" 'pull_request:'
+require "$quality" 'push:'
+require "$quality" '- main'
 require "$quality" 'workflow_dispatch:'
 require "$quality" 'release_pr:'
-require "$quality" "format('Quality candidate PR #{0} @ {1}', inputs.release_pr, github.sha)"
-reject "$quality" 'push:'
-require "$quality" 'pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RAN_DISPATCH_PR}")"'
-require "$quality" 'and .head.sha == $sha'
-require "$quality" 'test "$GITHUB_REF" = "refs/heads/${pr_head_ref}"'
-require "$quality" 'canonical_release_pr=false'
-require "$quality" 'canonical_release_pr=true'
-require "$quality" 'if [[ "$canonical_release_pr" == true ]]; then'
-
-identity_block="$(
-	sed -n \
-		'/# BEGIN canonical Release Please PR identity classification/,/# END canonical Release Please PR identity classification/p' \
-		"$quality"
-)"
-test -n "$identity_block"
-for identity_term in \
-	'pr_author' \
-	'pr_base_ref' \
-	'pr_head_ref' \
-	'pr_head_repository'; do
-	grep -Fq -- "$identity_term" <<< "$identity_block" || {
-		printf 'Canonical Release Please identity block is missing %s.\n' "$identity_term" >&2
-		exit 1
-	}
-done
-if grep -Fq -- 'GITHUB_ACTOR' <<< "$identity_block"; then
-	echo 'Actor identity must not decide whether a canonical Release Please PR is classified as a candidate.' >&2
-	exit 1
-fi
-
-
-admission_block="$(
-	sed -n \
-		'/# BEGIN canonical Release Please candidate admission/,/# END canonical Release Please candidate admission/p' \
-		"$quality"
-)"
-test -n "$admission_block"
-for admission_term in \
-	'if [[ "$canonical_release_pr" == true ]]; then' \
-	'test "$GITHUB_ACTOR" = '\''github-actions[bot]'\''' \
-	'bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"' \
-	'lane=release-candidate'; do
-	grep -Fq -- "$admission_term" <<< "$admission_block" || {
-		printf 'Canonical Release Please candidate admission block is missing: %s\n' "$admission_term" >&2
-		exit 1
-	}
-done
+require "$quality" 'candidate_sha:'
+require "$quality" "format('Quality candidate PR #{0} {1} @ trusted main {2}', inputs.release_pr, inputs.candidate_sha, github.sha)"
+require "$quality" 'name: quality'
+require "$quality" 'if: ${{ always() }}'
+require "$quality" 'Authenticate canonical Release Please candidate'
+require "$quality" 'RAN_CANDIDATE_SHA: ${{ inputs.candidate_sha }}'
+require "$quality" 'test "$GITHUB_ACTOR" = '\''github-actions[bot]'\'''
+require "$quality" 'test "$GITHUB_REF" = '\''refs/heads/main'\'''
+require "$quality" '.draft == true'
+require "$quality" '.base.sha == $base'
+require "$quality" '.head.sha == $candidate'
+require "$quality" '.commit.verification.verified == true'
+require "$quality" '.commit.verification.reason == "valid"'
+require "$quality" '.parents[0].sha == $base'
 require "$quality" 'bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"'
 require "$quality" 'git checkout --detach "$pr_head_sha"'
-require "$quality" 'source_commit="$pr_head_sha"'
-require "$quality" 'schema: "ran-ecwid-shop-teaser-ci-release"'
-require "$quality" 'workflowBlob'
-require "$quality" 'release-candidate'
-require "$quality" 'integration_tests":false'
-require "$quality" 'retention-days: 30'
-require "$quality" 'name: Quality and release artifact'
-require "$quality" 'name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}'
+require "$quality" 'bash scripts/create-release-assets.sh "v${version}"'
+require "$quality" 'schemaVersion: 3'
+require "$quality" 'Upload exact release evidence'
+require "$quality" "printf 'name=ran-ecwid-shop-teaser-ci-release-%s\\n'"
+require "$quality" 'overwrite: true'
+require "$quality" '.run.attempt >= 1'
+require "$quality" '4a464898bf96f9d5e19e9f04957a702bf9bdc191/templates/install-wp-tests.sh'
 
-require "$release" 'push:'
-require "$release" 'rulesets?per_page=100'
-require "$release" "ruleset_pages="
-require "$release" "ruleset_ids="
-require "$release" "applicable_rulesets='[]'"
-require "$release" 'while IFS= read -r ruleset_id'
-require "$release" 'Expected exactly one active repository ruleset for the default branch.'
-require "$release" '.github/workflows/reconcile-v1.2.3.yml'
-require "$release" 'tests/reconcile-v1.2.3-contract.sh'
-require "$release" '.source_type == "Repository"'
-require "$release" '.source == $repository'
-require "$release" '.target == "branch"'
-require "$release" '.conditions.ref_name.exclude == []'
-require "$release" '(.conditions.ref_name.include | sort) == ["~DEFAULT_BRANCH"]'
-reject "$release" 'rules/branches/main'
-require "$release" '.github/workflows/release-publisher.yml'
-require "$release" '.github/workflows/release-please.yml'
-require "$release" '.enforcement == "active"'
-require "$release" 'and has("bypass_actors")'
-require "$release" 'and (.bypass_actors | type == "array" and length == 0)'
-require "$release" 'and has("current_user_can_bypass")'
-require "$release" 'and .current_user_can_bypass == "never"'
-reject "$release" '.bypass_actors // []'
-require "$release" 'and all(.rules[]; .type != "required_linear_history")'
-require "$release" 'and any(.rules[]; .type == "deletion")'
-require "$release" 'and any(.rules[]; .type == "non_fast_forward")'
-require "$release" '(.parameters.allowed_merge_methods | sort) == ["merge", "squash"]'
-require "$release" '.parameters.dismiss_stale_reviews_on_push == true'
-require "$release" '.parameters.required_review_thread_resolution == true'
-require "$release" '.parameters.require_last_push_approval == false'
-require "$release" 'strict_required_status_checks_policy == true'
-require "$release" '(.parameters.required_status_checks | length) == 1'
-require "$release" '.parameters.required_status_checks[0].context == "quality"'
-require "$release" '.parameters.required_status_checks[0].integration_id == 15368'
-require "$release" 'pulls?state=closed&base=main&per_page=100'
-require "$release" '.merge_commit_sha == $merge'
-require "$release" 'publication-admitted=false'
-require "$release" 'publication-admitted=true'
-require "$release" '::notice::Release Please intentionally abstained:'
-require "$release" "if: steps.lifecycle.outputs.publication-admitted == 'true'"
-reject "$release" '::error::Trusted lifecycle path changed in PR:'
-reject "$release" '::error::Trusted release lifecycle fixtures changed in PR.'
-reject "$release" '::error::Executable dependency contract changed in PR:'
-require "$release" 'runs?head_sha=${head_sha}&status=completed'
-require "$release" 'actions/runs/${run_id}/attempts/${run_attempt}'
-require "$release" 'startswith("tests/fixtures/release-lifecycle/")'
-require "$release" 'and ($lane != "release-candidate" or .actor.login == $bot)'
-require "$release" 'and (.triggering_actor.login | type == "string" and length > 0)'
-require "$release" '($run_event == "workflow_dispatch" and .display_title == $dispatch_title)'
-require "$release" 'printf '\''artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s\n'\'' "$run_id" "$run_attempt"'
-require "$release" 'run-id: ${{ steps.lifecycle.outputs.run-id }}'
-require "$release" '.sourceTree == $main_tree and .testedTree == $main_tree'
-require "$release" '($lane == "release-candidate" and .sourceCommit == $head_sha'
-require "$release" 'refs/heads/${RAN_HEAD_REF}'
-require "$release" 'refs/pull/${RAN_PR_NUMBER}/head'
-require "$release" 'bash scripts/validate-release-candidate.sh "$RAN_BASE_SHA" "$release_head"'
-require "$release" '--target "$RAN_RELEASE_COMMIT"'
-require "$release" '--verify-tag --draft --target "$RAN_RELEASE_COMMIT"'
-require "$release" 'skip-github-release: true'
-require "$release" 'id: release_please'
-require "$release" 'RAN_RELEASE_PR: ${{ steps.release_please.outputs.pr }}'
-require "$release" 'RAN_RELEASE_PRS_CREATED: ${{ steps.release_please.outputs.prs_created }}'
-require "$release" 'name: Recover and dispatch exact secretless candidate Quality'
-require "$release" 'pulls?state=open&base=main&per_page=100'
-require "$release" 'test "$candidate_count" == 1'
-require "$release" 'and .base.ref == "main" and .base.sha == $sha'
-require "$release" 'and .author.login == $bot'
-require "$release" 'and .committer.login == $committer'
-require "$release" 'and .commit.verification.verified == true'
-require "$release" 'and .commit.verification.reason == "valid"'
-require "$release" 'and (.parents | length) == 1'
-require "$release" 'and .parents[0].sha == $base_sha'
-require "$release" 'bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"'
-require "$release" 'runs?event=workflow_dispatch&head_sha=${head_sha}&per_page=100'
-require "$release" 'and .display_title == $dispatch_title'
-require "$release" '(.status == "completed" and .conclusion == "success")'
-require "$release" 'or (.status == "requested" or .status == "queued" or .status == "pending"'
-reject "$release" "if: steps.release_please.outputs.prs_created == 'true'"
-require "$release" 'actions/workflows/quality.yml/dispatches'
-require "$release" '{ref: $ref, inputs: {release_pr: $release_pr}}'
-require "$release" 'cmp --silent "dist/${name}" "published-dist/${name}"'
-require "$release" 'cmp --silent "dist/${name}" "prepublish-dist/${name}"'
-require "$release" '.tag_name == $tag and .draft == true and .target_commitish == $commit'
-require "$release" 'git/ref/tags/${TAG_NAME}'
-require "$release" 'git/tags/${release_commit}'
-require "$release" '.target_commitish == $commit'
-require "$release" 'ref: ${{ steps.resolve.outputs.release-commit }}'
-require "$release" 'name: Build verified release assets without a write token'
-require "$release" 'name: Publish isolated manual release assets'
-require "$release" 'needs.publish-manual-release.result == '\''success'\'''
-require "$release" 'ref: ${{ env.RELEASE_COMMIT }}'
-require "$release" 'for path in composer.json composer.lock package.json pnpm-lock.yaml'
-require "$release" "printf 'source-commit=%s\\n' \"\$source_commit\""
-require "$release" "printf 'source-tree=%s\\n'"
-require "$release" "jq -er '.sourceTree'"
-require "$release" 'test "$SOURCE_TREE" = "$RELEASE_TREE"'
-require "$release" 'git/commits/${SOURCE_COMMIT}'
-require "$release" '"$SOURCE_COMMIT" "${options[@]}"'
-require "$deploy" 'SOURCE_COMMIT="${4:?The proven source commit is required.}"'
-require "$deploy" "\"\$(jq -er '.commit' \"\${MANIFEST_PATH}\")\" != \"\${SOURCE_COMMIT}\""
-reject "$deploy" 'git -C "${PLUGIN_ROOT}" rev-parse HEAD'
-reject "$release" 'RAN_QUALITY_COMMIT}^2'
-reject "$release" 'rev-list --parents'
-reject "$release" 'workflow_run:'
+require "$publisher" 'workflow_run:'
+require "$publisher" 'workflows: [Quality]'
+require "$publisher" 'types: [completed]'
+require "$publisher" 'branches: [main]'
+require "$publisher" "github.event.workflow_run.event == 'push'"
+require "$publisher" "github.event.workflow_run.conclusion == 'success'"
+require "$publisher" "github.event.workflow_run.head_branch == 'main'"
+require "$publisher" 'github.event.workflow_run.head_repository.id == github.repository_id'
+require "$publisher" 'github.event.workflow_run.head_repository.full_name == github.repository'
+require "$publisher" 'actions/runs/${RAN_QUALITY_RUN_ID}'
+require "$publisher" 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s'
+require "$publisher" "printf 'run-id=%s\\n'"
+require "$publisher" '.path == ".github/workflows/quality.yml"'
+require "$publisher" '.head_sha == $commit'
+require "$publisher" 'ref: ${{ steps.quality.outputs.commit }}'
+require "$publisher" 'persist-credentials: false'
 
-manual_build_section=$(sed -n '/^    package-release:/,/^    publish-manual-release:/p' "$release")
-grep -Fq 'contents: read' <<< "$manual_build_section"
-if grep -Fq 'contents: write' <<< "$manual_build_section"; then
-	echo 'Manual build job exposes a contents:write token.' >&2
+require "$publisher" 'Admit publisher for exact reviewed merge'
+require "$publisher" 'Expected exactly one merged PR for the qualified main commit.'
+merged_pr_block="$(awk '/pr_json="\$\(/,/pr_number=/' "$publisher")"
+grep -Fq 'and .merge_commit_sha == $commit' <<< "$merged_pr_block"
+if grep -Fq '.head.repo.full_name == $repository' <<< "$merged_pr_block"; then
+	echo 'Merged-PR reconstruction must admit forked pull requests.' >&2
+	exit 1
+fi
+require "$publisher" '.github/workflows/quality.yml'
+require "$publisher" '.github/workflows/release-publisher.yml'
+require "$publisher" 'tests/release-workflow-contract.sh'
+require "$publisher" 'tests/release-publication-contract.sh'
+require "$publisher" 'scripts/validate-release-candidate.sh'
+require "$publisher" 'scripts/create-release-assets.sh'
+require "$publisher" 'tools/build-release.php'
+require "$publisher" 'wordpress-org/deployment.json'
+require "$publisher" 'release-please-config.json'
+require "$publisher" "printf 'admitted=false\\n'"
+require "$publisher" "printf 'admitted=true\\n'"
+require "$publisher" 'Revalidate exact current main'
+require "$publisher" 'git/ref/heads/main'
+require "$publisher" "printf 'current=false\\n'"
+require "$publisher" "printf 'current=true\\n'"
+require "$publisher" "steps.current_main.outputs.current == 'true'"
+
+require "$publisher" 'googleapis/release-please-action@'
+require "$publisher" "if: steps.admission.outputs.admitted == 'true'"
+require "$publisher" "expected_head='release-please--branches--main--components--ran-ecwid-shop-teaser'"
+require "$publisher" 'runs?head_sha=${base_sha}&per_page=100'
+require "$publisher" 'and .head_branch == "main"'
+require "$publisher" '{ref: $ref, inputs: {release_pr: $release_pr, candidate_sha: $candidate_sha}}'
+require "$publisher" '--arg ref "main"'
+require "$publisher" '.user.login == $bot'
+require "$publisher" '.head.repo.full_name == $repository'
+require "$publisher" 'actions/workflows/quality.yml/dispatches'
+require "$publisher" '.event == "workflow_dispatch"'
+require "$publisher" '.display_title == $dispatch_title'
+require "$publisher" '.actor.login == $bot'
+require "$publisher" 'RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}'
+require "$publisher" 'test "$base_sha" = "$RAN_QUALITY_COMMIT"'
+require "$publisher" '.commit.verification.verified == true'
+require "$publisher" 'git fetch --no-tags origin'
+require "$publisher" 'bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"'
+
+require "$publisher" 'Resolve exact release for the qualified commit'
+require "$publisher" 'gh release view "$tag_name" --repo "$GITHUB_REPOSITORY" --json databaseId'
+require "$publisher" 'releases/${release_id}'
+require "$publisher" "printf 'draft=%s\\n'"
+require "$publisher" "printf 'release-id=%s\\n'"
+require "$publisher" 'RAN_RELEASE_DRAFT: ${{ steps.release_state.outputs.draft }}'
+require "$publisher" 'RAN_RELEASE_ID: ${{ steps.release_state.outputs.release-id }}'
+require "$publisher" "jq -nc '{draft:false}'"
+require "$publisher" 'releases/${RAN_RELEASE_ID}'
+require "$publisher" 'RAN_RELEASE_CREATED: ${{ steps.release.outputs.release_created }}'
+require "$publisher" 'ready=false'
+require "$publisher" 'ready=true'
+require "$publisher" "if: steps.release_state.outputs.ready == 'true'"
+require "$publisher" "if: steps.admission.outputs.admitted == 'true'"
+require "$publisher" 'Download exact qualified release assets'
+require "$publisher" 'run-id: ${{ steps.quality.outputs.run-id }}'
+require "$publisher" 'schemaVersion == 3'
+require "$publisher" 'releases/assets/${existing_id}'
+require "$publisher" 'uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RAN_RELEASE_ID}/assets?name=${name}'
+require "$publisher" 'git/ref/tags/${tag_name}'
+require "$publisher" '.target_commitish == $commit'
+require "$publisher" 'remote_digests='
+require "$publisher" 'test "$remote_digests" = "$local_digests"'
+require "$publisher" 'final_tag_ref='
+require "$publisher" 'final_tag_commit='
+require "$publisher" 'test "$final_tag_commit" = "$RAN_QUALITY_COMMIT"'
+
+reject "$publisher" 'rules/branches/main'
+reject "$publisher" '/rulesets'
+reject "$publisher" 'Manually rebuild an existing release'
+reject "$publisher" 'Publish isolated manual release assets'
+reject "$publisher" 'Deploy to WordPress.org'
+reject "$publisher" 'reconcile-v1.2.3'
+
+if grep -Eq '^[[:space:]]+workflow_dispatch:' "$publisher"; then
+	echo 'Release publisher must not expose a manual dispatch trigger.' >&2
 	exit 1
 fi
 
-manual_publish_section=$(sed -n '/^    publish-manual-release:/,/^    deploy-wordpress-org:/p' "$release")
-grep -Fq 'contents: write' <<< "$manual_publish_section"
-test "$(grep -Fc 'git/ref/tags/${TAG_NAME}' <<< "$manual_publish_section")" -ge 2
-test "$(grep -Fc 'and ([.assets[].name] | sort) == $expected' <<< "$manual_publish_section")" -ge 1
-grep -Fq 'and ($actual - $expected | length == 0)' <<< "$manual_publish_section"
-grep -Fq 'and ((.immutable // false) == false or ($actual | sort) == $expected)' <<< "$manual_publish_section"
-test "$(grep -Fc 'test "$tag_commit" = "$RELEASE_COMMIT"' <<< "$manual_publish_section")" -ge 2
-for forbidden in 'actions/checkout@' 'bash scripts/' 'pnpm ' 'composer '; do
-	if grep -Fq "$forbidden" <<< "$manual_publish_section"; then
-		printf 'Manual publish job executes ref-controlled code: %s\n' "$forbidden" >&2
-		exit 1
-	fi
-done
+printf 'Simplified release workflow contract passed.\n'
 
-printf 'Release workflow contract tests passed.\n'
+release_config="$repo_root/release-please-config.json"
+jq -e '."packages".".".draft == true
+  and ."packages"."."."force-tag-creation" == true
+  and ."packages"."."."draft-pull-request" == true' "$release_config" >/dev/null
+
+reject "$publisher" 'gh release upload "$RAN_TAG_NAME"'
