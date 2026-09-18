@@ -128,6 +128,7 @@ jobs:
                       scripts/validate-release-candidate.sh \
                       scripts/create-release-assets.sh \
                       tools/build-release.php \
+                      wordpress-org/deployment.json \
                       release-please-config.json; do
                       if jq -e --arg path "$path" 'add | any(.filename == $path)' <<< "$files_json" >/dev/null; then
                           printf 'admitted=false\n' >> "$GITHUB_OUTPUT"
@@ -202,9 +203,31 @@ jobs:
 
                   candidate="$(jq -cer '.[0]' <<< "$candidate_prs")"
                   candidate_number="$(jq -er '.number' <<< "$candidate")"
+                  base_sha="$(jq -er '.base.sha' <<< "$candidate")"
                   head_sha="$(jq -er '.head.sha' <<< "$candidate")"
+                  [[ "$base_sha" =~ ^[0-9a-f]{40}$ ]]
                   [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
+                  test "$base_sha" = '${{ steps.quality.outputs.commit }}'
                   test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${expected_head}" --jq '.object.sha')" = "$head_sha"
+
+                  commit_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}")"
+                  jq -e \
+                      --arg base "$base_sha" \
+                      --arg bot 'github-actions[bot]' \
+                      --arg head "$head_sha" \
+                      --arg committer 'web-flow' \
+                      '.sha == $head
+                        and .author.login == $bot
+                        and .committer.login == $committer
+                        and .commit.verification.verified == true
+                        and .commit.verification.reason == "valid"
+                        and (.parents | length) == 1
+                        and .parents[0].sha == $base' \
+                      <<< "$commit_json" >/dev/null
+
+                  git fetch --no-tags origin "+refs/heads/${expected_head}:refs/remotes/origin/${expected_head}"
+                  test "$(git rev-parse "refs/remotes/origin/${expected_head}")" = "$head_sha"
+                  bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"
 
                   workflow_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/quality.yml" --jq '.id')"
                   runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?head_sha=${head_sha}&per_page=100")"
@@ -246,7 +269,7 @@ jobs:
 
             - name: Resolve exact release for the qualified commit
               id: release_state
-              if: steps.admission.outputs.admitted == 'true' && steps.current_main.outputs.current == 'true'
+              if: steps.admission.outputs.admitted == 'true'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RAN_QUALITY_COMMIT: ${{ steps.quality.outputs.commit }}
@@ -426,3 +449,20 @@ jobs:
                       <<< "$release_json" >/dev/null
                   remote_digests="$(jq -c '[.assets[] | {name, digest}] | sort_by(.name)' <<< "$release_json")"
                   test "$remote_digests" = "$local_digests"
+
+                  final_tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RAN_TAG_NAME}")"
+                  final_tag_type="$(jq -er '.object.type' <<< "$final_tag_ref")"
+                  final_tag_commit="$(jq -er '.object.sha' <<< "$final_tag_ref")"
+                  final_peel_count=0
+                  while [[ "$final_tag_type" == tag ]]; do
+                      ((final_peel_count += 1))
+                      test "$final_peel_count" -le 8
+                      final_tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${final_tag_commit}")"
+                      if [[ "$final_peel_count" -eq 1 ]]; then
+                          test "$(jq -er '.tag' <<< "$final_tag_object")" = "$RAN_TAG_NAME"
+                      fi
+                      final_tag_type="$(jq -er '.object.type' <<< "$final_tag_object")"
+                      final_tag_commit="$(jq -er '.object.sha' <<< "$final_tag_object")"
+                  done
+                  test "$final_tag_type" = commit
+                  test "$final_tag_commit" = "$RAN_QUALITY_COMMIT"
