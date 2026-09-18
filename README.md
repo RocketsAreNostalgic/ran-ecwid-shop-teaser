@@ -102,13 +102,18 @@ The privileged `Release Please` publisher runs only after a successful
 same-repository `Quality` run for an exact `main` revision. It authenticates
 that triggering run, checks out the exact qualified commit without persisted
 credentials, and lets the pinned Release Please action open/update the release
-PR or publish a merged release. Release Please candidate PRs receive a
-read-only full `Quality` run by explicit workflow dispatch.
+PR or prepare a merged release. Release Please PRs are created as drafts.
+The publisher validates the candidate from trusted `main`, then dispatches the
+trusted `main` Quality workflow with the exact candidate SHA as data. After
+that exact trusted candidate run succeeds, the repository owner marks the draft
+release PR ready and normal-merges that unchanged head.
 
-When a release is created, the publisher downloads the exact ZIP, SHA-256 file,
-and manifest produced by the triggering `Quality` run, proves that they belong
-to the qualified commit/tag, attaches them to the GitHub Release, and reads back
-the exact tag, release target, asset names, and SHA-256 digests.
+When a release is cut, Release Please creates a draft GitHub Release and its
+exact tag. The publisher downloads the exact ZIP, SHA-256 file, and manifest
+produced by the triggering `Quality` run, proves that they belong to the
+qualified commit/tag, attaches and verifies them while the release is mutable,
+then publishes the draft and reads back the exact tag, release target, asset
+names, and SHA-256 digests. This remains safe if immutable releases are enabled.
 
 The unpublished `1.2.3` proposal was superseded and has no tag or GitHub
 Release. The next real publication is expected to be `v1.2.4`. WordPress.org
