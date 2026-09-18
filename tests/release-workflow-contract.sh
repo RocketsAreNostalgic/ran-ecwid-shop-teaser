@@ -4,7 +4,12 @@ set -euo pipefail
 
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 quality="$repo_root/.github/workflows/quality.yml"
-release="$repo_root/.github/workflows/release-please.yml"
+release="$repo_root/.github/workflows/release-publisher.yml"
+legacy_release="$repo_root/.github/workflows/release-please.yml"
+if [[ -e "$legacy_release" ]]; then
+	echo 'Legacy dispatchable release workflow path must remain absent.' >&2
+	exit 1
+fi
 deploy="$repo_root/scripts/deploy-wordpress-org.sh"
 
 require() {
@@ -88,6 +93,22 @@ require "$quality" 'name: Quality and release artifact'
 require "$quality" 'name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}'
 
 require "$release" 'push:'
+require "$release" 'rulesets?per_page=100'
+require "$release" "ruleset_pages="
+require "$release" "ruleset_ids="
+require "$release" "applicable_rulesets='[]'"
+require "$release" 'while IFS= read -r ruleset_id'
+require "$release" 'Expected exactly one active repository ruleset for the default branch.'
+require "$release" '.github/workflows/reconcile-v1.2.3.yml'
+require "$release" 'tests/reconcile-v1.2.3-contract.sh'
+require "$release" '.source_type == "Repository"'
+require "$release" '.source == $repository'
+require "$release" '.target == "branch"'
+require "$release" '.conditions.ref_name.exclude == []'
+require "$release" '(.conditions.ref_name.include | sort) == ["~DEFAULT_BRANCH"]'
+reject "$release" 'rules/branches/main'
+require "$release" '.github/workflows/release-publisher.yml'
+require "$release" '.github/workflows/release-please.yml'
 require "$release" '.enforcement == "active"'
 require "$release" 'and has("bypass_actors")'
 require "$release" 'and (.bypass_actors | type == "array" and length == 0)'

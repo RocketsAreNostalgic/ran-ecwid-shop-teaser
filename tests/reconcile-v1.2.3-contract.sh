@@ -26,6 +26,9 @@ require 'RAN_RELEASE_TREE: 4fd474af152c5944db2e6ef8b1a86ddcbdd4d9ff'
 require "RAN_RELEASE_PR: '11'"
 require 'RAN_RELEASE_TAG: v1.2.3'
 require 'RAN_RELEASE_VERSION: 1.2.3'
+require 'workflow_dispatch:'
+reject 'push:'
+require "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'"
 require 'group: release-please-main'
 require 'git checkout --detach "$RAN_HISTORICAL_COMMIT"'
 require "test \"\$(git rev-parse 'HEAD^{tree}')\" = \"\$RAN_RELEASE_TREE\""
