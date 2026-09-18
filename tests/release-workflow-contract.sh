@@ -118,7 +118,6 @@ require "$publisher" 'test "$base_sha" = "$RAN_QUALITY_COMMIT"'
 require "$publisher" '.commit.verification.verified == true'
 require "$publisher" 'git fetch --no-tags origin'
 require "$publisher" 'bash scripts/validate-release-candidate.sh "$base_sha" "$head_sha"'
-require "$publisher" '{ref: $ref, inputs: {release_pr: $release_pr}}'
 
 require "$publisher" 'Resolve exact release for the qualified commit'
 require "$publisher" 'gh release view "$tag_name" --repo "$GITHUB_REPOSITORY" --json databaseId'
