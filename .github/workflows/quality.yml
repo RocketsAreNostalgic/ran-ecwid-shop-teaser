@@ -70,13 +70,7 @@ jobs:
                   pnpm check:generated
                   composer lint
 
-            - name: Build exact PR-head release evidence
-              id: release
-              shell: bash
-              env:
-                  RAN_LANE: ${{ steps.lifecycle.outputs.lane }}
-                  RAN_PR_BASE_REF: ${{ steps.lifecycle.outputs.base-ref }}
-                  RAN_PR_BASE_SHA: ${{ steps.lifecycle            - name: Build exact release evidence
+            - name: Build exact release evidence
               id: release
               shell: bash
               run: |
