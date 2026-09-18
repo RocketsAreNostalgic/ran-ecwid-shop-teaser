@@ -78,10 +78,12 @@ This repository uses the RAN `wordpress-plugin` quality profile.
   shared baseline. WordPress integration PHPUnit remains owned by the
   compatibility matrix.
 - `pnpm check` remains the deterministic package-level quality contract.
-- Release-candidate validation, archive identity, generated block/POT drift,
-  fresh-ZIP install/activation, compatibility coverage, and Plugin Check
-  remain repository-owned specialist gates. Shared quality adoption must not
-  remove or weaken them.
+- Release-candidate identity/admission, archive identity, generated block/POT
+  drift, fresh-ZIP install/activation, compatibility coverage, and Plugin Check
+  remain repository-owned specialist gates. Canonical Release Please PRs must
+  retain the bot-owned, verified, direct-single-parent generated-head contract
+  before entering the same full Quality path; this is an admission precondition,
+  not a reduced release-candidate quality lane.
 
 ## Git and commits
 
@@ -111,10 +113,13 @@ The privileged release publisher follows the Starter topology: consume an exact
 successful same-repository `Quality` run for `main`, run the pinned Release
 Please action from that qualified revision, dispatch read-only full `Quality`
 for the exact bot-owned release-PR head when needed, and read back the exact
-tag, release, and release assets after publication. Repository rulesets enforce
-merge governance outside the publisher. Do not add live ruleset reconstruction,
-historical-release recovery state machines, or manual rebuild/publish authority
-to the normal release workflow.
+tag, release, and release assets after publication. Ecwid deliberately retains
+two bounded product-specific safeguards because of its prior release incident:
+exact bot-generated release-candidate admission and an independent clean
+abstention when a merged PR changes trusted release-control surfaces.
+Repository rulesets enforce merge governance outside the publisher. Do not add
+live ruleset reconstruction, historical-release recovery state machines, or
+manual rebuild/publish authority to the normal release workflow.
 
 Treat the existing initial-release preparation commit as the bootstrap
 boundary, preserve version `1.0.0` in the initial manifest, and review the
