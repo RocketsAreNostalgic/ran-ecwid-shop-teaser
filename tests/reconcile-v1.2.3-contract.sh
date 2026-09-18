@@ -86,7 +86,15 @@ require 'git/ref/heads/main'
 require '.merge_commit_sha == $merge'
 require '.head.sha == $head'
 require '.user.login == "github-actions[bot]"'
-require 'Historical v1.2.3 is fully qualified. Create exact tag ${RAN_RELEASE_TAG} at ${RAN_HISTORICAL_COMMIT}'
+require 'state=awaiting-tag'
+require "case \"\$tag_http_status\" in"
+require '404)'
+require '::error::Unable to read exact historical tag state (HTTP ${tag_http_status}).'
+reject '2>/dev/null || true'
+require '::notice::Historical v1.2.3 is fully qualified and awaiting exact owner-created tag'
+require 'After the tag exists, rerun only this publisher job'
+require "if: steps.identity.outputs.state != 'awaiting-tag'"
+reject '::error::Historical v1.2.3 is fully qualified. Create exact tag'
 require 'git/ref/tags/${RAN_RELEASE_TAG}'
 reject '--method POST "repos/${GITHUB_REPOSITORY}/git/refs"'
 reject 'gh release create'
@@ -95,7 +103,7 @@ require 'releases/${RELEASE_ID}/assets?name=${asset_name}'
 require 'Read back exact tag, release, assets, and digests'
 require 'Reconcile Release Please PR labels only after exact publication readback'
 
-tag_guard=$(awk '/Historical v1.2.3 is fully qualified. Create exact tag/ { print NR; exit }' "$workflow")
+tag_guard=$(awk '/state=awaiting-tag/ { print NR; exit }' "$workflow")
 draft_create=$(awk '/Create exact draft release from the pre-existing verified tag/ { print NR; exit }' "$workflow")
 readback=$(awk '/Read back exact tag, release, assets, and digests/ { print NR; exit }' "$workflow")
 labels=$(awk '/Reconcile Release Please PR labels only after exact publication readback/ { print NR; exit }' "$workflow")

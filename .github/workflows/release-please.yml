@@ -125,6 +125,13 @@ jobs:
                       test "$head_tree" = "$main_tree"
                   fi
 
+                  abstain() {
+                      local reason=$1
+                      printf 'publication-admitted=false\n' >> "$GITHUB_OUTPUT"
+                      printf '::notice::Release Please intentionally abstained: %s\n' "$reason"
+                      exit 0
+                  }
+
                   files_json="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100")"
                   for path in \
                       .github/workflows/quality.yml \
@@ -137,19 +144,16 @@ jobs:
                       tools/build-release.php \
                       wordpress-org/deployment.json; do
                       if jq -e --arg path "$path" 'add | any(.filename == $path)' <<< "$files_json" >/dev/null; then
-                          echo "::error::Trusted lifecycle path changed in PR: ${path}"
-                          exit 1
+                          abstain "trusted lifecycle path changed in PR: ${path}"
                       fi
                   done
                   if jq -e 'add | any(.filename | startswith("tests/fixtures/release-lifecycle/"))' <<< "$files_json" >/dev/null; then
-                      echo '::error::Trusted release lifecycle fixtures changed in PR.'
-                      exit 1
+                      abstain 'trusted release lifecycle fixtures changed in PR'
                   fi
                   if [[ "$lane" == full ]]; then
                       for path in composer.json composer.lock package.json pnpm-lock.yaml; do
                           if jq -e --arg path "$path" 'add | any(.filename == $path)' <<< "$files_json" >/dev/null; then
-                              echo "::error::Executable dependency contract changed in PR: ${path}"
-                              exit 1
+                              abstain "executable dependency contract changed in PR: ${path}"
                           fi
                       done
                   fi
@@ -210,6 +214,7 @@ jobs:
                       <<< "$attempt" >/dev/null
 
                   {
+                      printf 'publication-admitted=true\n'
                       printf 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s\n' "$run_id" "$run_attempt"
                       printf 'base-sha=%s\n' "$base_sha"
                       printf 'head-ref=%s\n' "$head_ref"
@@ -226,6 +231,7 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             - name: Download exact PR Quality evidence
+              if: steps.lifecycle.outputs.publication-admitted == 'true'
               uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
               with:
                   name: ${{ steps.lifecycle.outputs.artifact-name }}
@@ -235,6 +241,7 @@ jobs:
                   run-id: ${{ steps.lifecycle.outputs.run-id }}
 
             - name: Verify tested tree, workflow, and release evidence
+              if: steps.lifecycle.outputs.publication-admitted == 'true'
               id: evidence
               shell: bash
               env:
@@ -336,7 +343,7 @@ jobs:
 
             - name: Inspect existing release state
               id: state
-              if: steps.evidence.outputs.release-required == 'true'
+              if: steps.lifecycle.outputs.publication-admitted == 'true' && steps.evidence.outputs.release-required == 'true'
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -378,7 +385,7 @@ jobs:
 
             - name: Open or update Release Please pull request
               id: release_please
-              if: steps.evidence.outputs.release-please-required == 'true'
+              if: steps.lifecycle.outputs.publication-admitted == 'true' && steps.evidence.outputs.release-please-required == 'true'
               uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
@@ -387,7 +394,7 @@ jobs:
                   skip-github-release: true
 
             - name: Recover and dispatch exact secretless candidate Quality
-              if: steps.evidence.outputs.release-please-required == 'true'
+              if: steps.lifecycle.outputs.publication-admitted == 'true' && steps.evidence.outputs.release-please-required == 'true'
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -492,7 +499,7 @@ jobs:
 
             - name: Create draft, attach exact tested assets, and publish
               id: publish
-              if: steps.evidence.outputs.release-required == 'true'
+              if: steps.lifecycle.outputs.publication-admitted == 'true' && steps.evidence.outputs.release-required == 'true'
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -557,7 +564,7 @@ jobs:
                   echo 'published-now=true' >> "$GITHUB_OUTPUT"
 
             - name: Read back published release and reconcile exact PR
-              if: steps.evidence.outputs.release-required == 'true'
+              if: steps.lifecycle.outputs.publication-admitted == 'true' && steps.evidence.outputs.release-required == 'true'
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -612,7 +619,7 @@ jobs:
 
             - name: Read deployment contract
               id: contract
-              if: steps.evidence.outputs.release-required == 'true'
+              if: steps.lifecycle.outputs.publication-admitted == 'true' && steps.evidence.outputs.release-required == 'true'
               run: echo "enabled=$(jq -r '.enabled' wordpress-org/deployment.json)" >> "$GITHUB_OUTPUT"
 
     package-release:
