@@ -105,6 +105,8 @@ jobs:
                       .github/workflows/quality.yml \
                       .github/workflows/release-publisher.yml \
                       .github/workflows/release-please.yml \
+                      .github/workflows/reconcile-v1.2.3.yml \
+                      tests/reconcile-v1.2.3-contract.sh \
                       scripts/create-release-assets.sh \
                       scripts/validate-release-candidate.sh \
                       tests/release-candidate-contract.sh \
@@ -127,23 +129,34 @@ jobs:
                       done
                   fi
 
-                  rulesets="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/rulesets?per_page=100")"
-                  ruleset_id="$(
+                  ruleset_pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/rulesets?per_page=100")"
+                  ruleset_ids="$(
                       jq -cer \
                           --arg repository "$GITHUB_REPOSITORY" \
-                          'add | [.[] | select(
+                          '[add[] | select(
                               .source_type == "Repository"
                               and .source == $repository
                               and .target == "branch"
                               and .enforcement == "active"
-                          )]
-                          | if length == 1
-                            then .[0].id
-                            else error("Expected exactly one active repository branch ruleset.")
-                            end' \
-                          <<< "$rulesets"
+                          ) | .id] | unique' \
+                          <<< "$ruleset_pages"
                   )"
-                  ruleset="$(gh api "repos/${GITHUB_REPOSITORY}/rulesets/${ruleset_id}")"
+                  applicable_rulesets='[]'
+                  while IFS= read -r ruleset_id; do
+                      candidate="$(gh api "repos/${GITHUB_REPOSITORY}/rulesets/${ruleset_id}")"
+                      if jq -e \
+                          --arg repository "$GITHUB_REPOSITORY" \
+                          '.source_type == "Repository"
+                           and .source == $repository
+                           and .target == "branch"
+                           and .enforcement == "active"
+                           and .conditions.ref_name.exclude == []
+                           and (.conditions.ref_name.include | sort) == ["~DEFAULT_BRANCH"]' \
+                          <<< "$candidate" >/dev/null; then
+                          applicable_rulesets="$(jq -c --argjson candidate "$candidate" '. + [$candidate]' <<< "$applicable_rulesets")"
+                      fi
+                  done < <(jq -r '.[]' <<< "$ruleset_ids")
+                  ruleset="$(jq -cer 'if length == 1 then .[0] else error("Expected exactly one active repository ruleset for the default branch.") end' <<< "$applicable_rulesets")"
                   jq -e \
                       --arg repository "$GITHUB_REPOSITORY" \
                       '
