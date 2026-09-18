@@ -66,7 +66,12 @@ jobs:
                         and .head_commit.id == $commit' \
                       <<< "$evidence" >/dev/null
 
-                  printf 'commit=%s\n' "$RAN_QUALITY_COMMIT" >> "$GITHUB_OUTPUT"
+                  {
+                      printf 'artifact-name=ran-ecwid-shop-teaser-ci-release-%s-%s\n' "$RAN_QUALITY_RUN_ID" "$RAN_QUALITY_RUN_ATTEMPT"
+                      printf 'commit=%s\n' "$RAN_QUALITY_COMMIT"
+                      printf 'run-attempt=%s\n' "$RAN_QUALITY_RUN_ATTEMPT"
+                      printf 'run-id=%s\n' "$RAN_QUALITY_RUN_ID"
+                  } >> "$GITHUB_OUTPUT"
 
             - name: Check out exact qualified commit
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
