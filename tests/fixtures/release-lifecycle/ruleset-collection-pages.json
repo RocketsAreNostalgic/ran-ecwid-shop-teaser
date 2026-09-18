@@ -1,0 +1,30 @@
+[
+	[
+		{
+			"id": 20942702,
+			"name": "Protect default branch",
+			"target": "branch",
+			"source_type": "Repository",
+			"source": "RocketsAreNostalgic/ran-ecwid-shop-teaser",
+			"enforcement": "active"
+		},
+		{
+			"id": 20942703,
+			"name": "Protect develop",
+			"target": "branch",
+			"source_type": "Repository",
+			"source": "RocketsAreNostalgic/ran-ecwid-shop-teaser",
+			"enforcement": "active"
+		}
+	],
+	[
+		{
+			"id": 30942704,
+			"name": "Organization policy",
+			"target": "branch",
+			"source_type": "Organization",
+			"source": "RocketsAreNostalgic",
+			"enforcement": "active"
+		}
+	]
+]
