@@ -1,17 +1,12 @@
 name: Quality
-run-name: >-
-    ${{ github.event_name == 'workflow_dispatch' && inputs.release_pr != ''
-        && format('Quality candidate PR #{0} @ {1}', inputs.release_pr, github.sha)
-        || format('Quality {0} @ {1}', github.event_name, github.sha) }}
+run-name: ${{ format('Quality {0} @ {1}', github.event_name, github.sha) }}
 
 on:
     pull_request:
+    push:
+        branches:
+            - main
     workflow_dispatch:
-        inputs:
-            release_pr:
-                description: Exact open Release Please PR number to validate at this branch head
-                required: false
-                type: string
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,11 +14,9 @@ concurrency:
 
 permissions:
     contents: read
-    pull-requests: read
 
 jobs:
     baseline:
-        if: ${{ github.event_name == 'pull_request' }}
         uses: RocketsAreNostalgic/.github/.github/workflows/quality-wordpress-plugin.yml@72a90b5826db37d1e94cdcdcf3374ccf58c0aa7d # accepted quality-v1 provider
         with:
             php-version: '8.3'
@@ -35,8 +28,6 @@ jobs:
         outputs:
             artifact-name: ${{ steps.artifact.outputs.name }}
             archive-sha256: ${{ steps.release.outputs.archive-sha256 }}
-            lane: ${{ steps.release.outputs.lane }}
-            matrix: ${{ steps.release.outputs.matrix }}
             source-commit: ${{ steps.release.outputs.source-commit }}
             version: ${{ steps.release.outputs.version }}
         steps:
@@ -46,91 +37,11 @@ jobs:
                   fetch-depth: 0
                   persist-credentials: false
 
-            - name: Classify exact Release Please candidate
-              id: lifecycle
+            - name: Verify exact tested revision
               shell: bash
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RAN_DISPATCH_PR: ${{ inputs.release_pr }}
-                  RAN_PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-                  RAN_PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
-                  RAN_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-                  RAN_PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-                  RAN_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-                  RAN_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
               run: |
                   set -euo pipefail
-                  lane=full
-                  source_commit="$(git rev-parse HEAD)"
-                  pr_author="${RAN_PR_AUTHOR:-}"
-                  pr_base_ref="${RAN_PR_BASE_REF:-}"
-                  pr_base_sha="${RAN_PR_BASE_SHA:-}"
-                  pr_head_ref="${RAN_PR_HEAD_REF:-}"
-                  pr_head_repository="${RAN_PR_HEAD_REPOSITORY:-}"
-                  pr_head_sha="${RAN_PR_HEAD_SHA:-}"
-                  pr_number="${{ github.event.pull_request.number || 0 }}"
-
-                  if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
-                      [[ "$RAN_DISPATCH_PR" =~ ^[1-9][0-9]*$ ]]
-                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
-                      pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RAN_DISPATCH_PR}")"
-                      jq -e \
-                          --arg bot 'github-actions[bot]' \
-                          --arg head 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
-                          --arg repository "$GITHUB_REPOSITORY" \
-                          --arg sha "$GITHUB_SHA" \
-                          '.state == "open" and .user.login == $bot and .base.ref == "main"
-                            and .head.ref == $head and .head.repo.full_name == $repository
-                            and .head.sha == $sha' <<< "$pr_json" >/dev/null
-                      pr_author="$(jq -er '.user.login' <<< "$pr_json")"
-                      pr_base_ref="$(jq -er '.base.ref' <<< "$pr_json")"
-                      pr_base_sha="$(jq -er '.base.sha' <<< "$pr_json")"
-                      pr_head_ref="$(jq -er '.head.ref' <<< "$pr_json")"
-                      pr_head_repository="$(jq -er '.head.repo.full_name' <<< "$pr_json")"
-                      pr_head_sha="$(jq -er '.head.sha' <<< "$pr_json")"
-                      pr_number="$(jq -er '.number' <<< "$pr_json")"
-                      test "$GITHUB_REF" = "refs/heads/${pr_head_ref}"
-                  fi
-
-                  # BEGIN canonical Release Please PR identity classification
-                  # Classify the canonical Release Please PR by durable PR identity first.
-                  # Actor identity is an admission check below, not a reason to fall back
-                  # to the ordinary full-PR lane.
-                  canonical_release_pr=false
-                  if [[ "$pr_author" == 'github-actions[bot]' \
-                      && "$pr_base_ref" == main \
-                      && "$pr_head_ref" == 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
-                      && "$pr_head_repository" == "$GITHUB_REPOSITORY" ]]; then
-                      canonical_release_pr=true
-                  fi
-                  # END canonical Release Please PR identity classification
-
-                  # BEGIN canonical Release Please candidate admission
-                  if [[ "$canonical_release_pr" == true ]]; then
-                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
-                      if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
-                          test "$(git rev-parse HEAD)" = "$pr_head_sha"
-                      fi
-                      bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"
-                      git checkout --detach "$pr_head_sha"
-                      lane=release-candidate
-                      source_commit="$pr_head_sha"
-                  elif [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
-                      echo '::error::The dispatched Release Please candidate did not satisfy the exact live PR contract.'
-                      exit 1
-                  fi
-                  # END canonical Release Please candidate admission
-
-                  {
-                      printf 'base-ref=%s\n' "$pr_base_ref"
-                      printf 'base-sha=%s\n' "$pr_base_sha"
-                      printf 'head-ref=%s\n' "$pr_head_ref"
-                      printf 'head-repository=%s\n' "$pr_head_repository"
-                      printf 'head-sha=%s\n' "$pr_head_sha"
-                      printf 'lane=%s\n' "$lane"
-                      printf 'pr-number=%s\n' "$pr_number"
-                      printf 'source-commit=%s\n' "$source_commit"
-                  } >> "$GITHUB_OUTPUT"
+                  test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
             - name: Set up PHP
               uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
@@ -140,21 +51,18 @@ jobs:
                   extensions: zip
                   tools: composer:v2, wp-cli
 
-            - name: Set up pnpm for full PR validation
-              if: ${{ steps.lifecycle.outputs.lane == 'full' }}
+            - name: Set up pnpm
               uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
               with:
                   version: 11.5.2
 
-            - name: Set up Node.js for full PR validation
-              if: ${{ steps.lifecycle.outputs.lane == 'full' }}
+            - name: Set up Node.js
               uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
               with:
                   node-version-file: package.json
                   cache: pnpm
 
-            - name: Run full source and generated-file gates once
-              if: ${{ steps.lifecycle.outputs.lane == 'full' }}
+            - name: Run deterministic source and generated-file gates
               run: |
                   pnpm install --frozen-lockfile
                   composer install --no-interaction --prefer-dist --no-progress
@@ -162,68 +70,47 @@ jobs:
                   pnpm check:generated
                   composer lint
 
-            - name: Run strict release-candidate contract gates
-              if: ${{ steps.lifecycle.outputs.lane == 'release-candidate' }}
-              run: |
-                  bash tests/release-candidate-contract.sh
-                  bash tests/release-workflow-contract.sh
-                  php tools/lint-php.php
-
             - name: Build exact PR-head release evidence
               id: release
               shell: bash
               env:
                   RAN_LANE: ${{ steps.lifecycle.outputs.lane }}
                   RAN_PR_BASE_REF: ${{ steps.lifecycle.outputs.base-ref }}
-                  RAN_PR_BASE_SHA: ${{ steps.lifecycle.outputs.base-sha }}
-                  RAN_PR_HEAD_REF: ${{ steps.lifecycle.outputs.head-ref }}
-                  RAN_PR_HEAD_REPOSITORY: ${{ steps.lifecycle.outputs.head-repository }}
-                  RAN_PR_HEAD_SHA: ${{ steps.lifecycle.outputs.head-sha }}
-                  RAN_PR_NUMBER: ${{ steps.lifecycle.outputs.pr-number }}
+                  RAN_PR_BASE_SHA: ${{ steps.lifecycle            - name: Build exact release evidence
+              id: release
+              shell: bash
               run: |
                   set -euo pipefail
                   source_commit="$(git rev-parse HEAD)"
                   source_tree="$(git rev-parse 'HEAD^{tree}')"
-                  tested_commit="$source_commit"
-                  tested_tree="$source_tree"
+                  test "$source_commit" = "$GITHUB_SHA"
+
                   version="$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' ran-ecwid-shop-teaser.php)"
                   test -n "$version"
                   bash scripts/create-release-assets.sh "v${version}"
+
                   archive="dist/ran-ecwid-shop-teaser-${version}.zip"
-                  archive_sha256="$(cut -d ' ' -f 1 "${archive}.sha256")"
+                  checksum="${archive}.sha256"
+                  manifest="dist/ran-ecwid-shop-teaser-${version}.manifest.json"
+                  archive_sha256="$(cut -d ' ' -f 1 "$checksum")"
                   workflow_blob="$(git hash-object .github/workflows/quality.yml)"
-                  pr_number="${RAN_PR_NUMBER:-0}"
 
                   jq -n \
-                      --arg baseRef "${RAN_PR_BASE_REF:-}" \
-                      --arg baseSha "${RAN_PR_BASE_SHA:-}" \
                       --arg event "$GITHUB_EVENT_NAME" \
-                      --arg headRef "${RAN_PR_HEAD_REF:-}" \
-                      --arg headRepository "${RAN_PR_HEAD_REPOSITORY:-}" \
-                      --arg headSha "${RAN_PR_HEAD_SHA:-}" \
-                      --arg lane "$RAN_LANE" \
-                      --arg qualityCommit "$GITHUB_SHA" \
                       --arg sha256 "$archive_sha256" \
                       --arg sourceCommit "$source_commit" \
                       --arg sourceTree "$source_tree" \
-                      --arg testedCommit "$tested_commit" \
-                      --arg testedTree "$tested_tree" \
                       --arg version "$version" \
                       --arg workflowBlob "$workflow_blob" \
                       --arg workflowRef "$GITHUB_WORKFLOW_REF" \
                       --arg workflowSha "$GITHUB_WORKFLOW_SHA" \
                       --argjson attempt "$GITHUB_RUN_ATTEMPT" \
                       --argjson id "$GITHUB_RUN_ID" \
-                      --argjson number "$pr_number" \
                       '{
                           schema: "ran-ecwid-shop-teaser-ci-release",
-                          schemaVersion: 2,
-                          lane: $lane,
-                          qualityCommit: $qualityCommit,
+                          schemaVersion: 3,
                           sourceCommit: $sourceCommit,
                           sourceTree: $sourceTree,
-                          testedCommit: $testedCommit,
-                          testedTree: $testedTree,
                           version: $version,
                           sha256: $sha256,
                           run: {
@@ -233,35 +120,34 @@ jobs:
                               workflowRef: $workflowRef,
                               workflowSha: $workflowSha,
                               workflowBlob: $workflowBlob
-                          },
-                          pullRequest: {
-                              number: $number,
-                              baseRef: $baseRef,
-                              baseSha: $baseSha,
-                              headRef: $headRef,
-                              headRepository: $headRepository,
-                              headSha: $headSha
                           }
                       }' > dist/ran-ecwid-shop-teaser-ci-release.json
 
-                  if [[ "$RAN_LANE" == release-candidate ]]; then
-                      matrix='{"include":[{"php":"8.3","wordpress":"latest","plugin_check":true,"integration_tests":false}]}'
-                  else
-                      matrix='{"include":[{"php":"8.0","wordpress":"6.5","plugin_check":false,"integration_tests":true},{"php":"8.3","wordpress":"latest","plugin_check":true,"integration_tests":true}]}'
-                  fi
+                  jq -e \
+                      --arg commit "$source_commit" \
+                      --arg sha256 "$archive_sha256" \
+                      --arg tag "v${version}" \
+                      --arg version "$version" \
+                      '.schemaVersion == 1
+                        and .commit == $commit
+                        and .sha256 == $sha256
+                        and .tag == $tag
+                        and .version == $version' \
+                      "$manifest" >/dev/null
+                  (cd dist && sha256sum --check --strict "$(basename "$checksum")")
+                  unzip -tqq "$archive"
+
                   {
                       printf 'archive-sha256=%s\n' "$archive_sha256"
-                      printf 'lane=%s\n' "$RAN_LANE"
-                      printf 'matrix=%s\n' "$matrix"
                       printf 'source-commit=%s\n' "$source_commit"
                       printf 'version=%s\n' "$version"
                   } >> "$GITHUB_OUTPUT"
 
-            - name: Name PR evidence artifact
+            - name: Name exact release evidence artifact
               id: artifact
               run: printf 'name=ran-ecwid-shop-teaser-ci-release-%s-%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
-            - name: Upload verified PR evidence
+            - name: Upload exact release evidence
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: ${{ steps.artifact.outputs.name }}
@@ -279,7 +165,14 @@ jobs:
         runs-on: blacksmith-2vcpu-ubuntu-2404
         strategy:
             fail-fast: false
-            matrix: ${{ fromJSON(needs.quality.outputs.matrix) }}
+            matrix:
+                include:
+                    - php: '8.0'
+                      wordpress: '6.5'
+                      plugin_check: false
+                    - php: '8.3'
+                      wordpress: latest
+                      plugin_check: true
         services:
             mysql:
                 image: mysql:8.0
@@ -308,16 +201,15 @@ jobs:
                   tools: composer:v2, wp-cli
 
             - name: Install PHP test dependencies
-              if: ${{ matrix.integration_tests }}
               run: composer install --no-interaction --prefer-dist --no-progress
 
-            - name: Download exact PR evidence
+            - name: Download exact release evidence
               uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
               with:
                   name: ${{ needs.quality.outputs.artifact-name }}
                   path: dist
 
-            - name: Verify shared archive identity
+            - name: Verify exact release evidence
               shell: bash
               run: |
                   set -euo pipefail
@@ -330,7 +222,7 @@ jobs:
                       --arg version '${{ needs.quality.outputs.version }}' \
                       --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
                       --argjson run_id "$GITHUB_RUN_ID" \
-                      '.schema == "ran-ecwid-shop-teaser-ci-release" and .schemaVersion == 2
+                      '.schema == "ran-ecwid-shop-teaser-ci-release" and .schemaVersion == 3
                         and .sourceCommit == $commit and .version == $version and .sha256 == $sha256
                         and .run.id == $run_id and .run.attempt == $run_attempt' \
                       "$metadata" >/dev/null
@@ -340,14 +232,12 @@ jobs:
                   unzip -tqq "$archive"
 
             - name: Install WordPress integration-test environment
-              if: ${{ matrix.integration_tests }}
               run: |
                   curl --fail --location --silent --show-error --output /tmp/install-wp-tests.sh \
                       https://raw.githubusercontent.com/wp-cli/scaffold-command/main/templates/install-wp-tests.sh
                   bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }} true
 
             - name: Run WordPress integration tests
-              if: ${{ matrix.integration_tests }}
               run: composer test
 
             - name: Install and activate tested ZIP in fresh WordPress
@@ -369,7 +259,7 @@ jobs:
 
     quality-gate:
         name: quality
-        if: ${{ github.event_name == 'pull_request' && always() }}
+        if: ${{ always() }}
         needs:
             - baseline
             - quality
