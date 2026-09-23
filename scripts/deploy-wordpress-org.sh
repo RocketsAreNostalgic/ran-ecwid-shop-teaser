@@ -122,6 +122,10 @@ svn add --force "$svn_checkout/trunk" --parents
 if [ "$sync_assets" = true ]; then
 	rsync -a --delete --exclude='README.md' --exclude='drafts/' --exclude='.svn' \
 		"$root/$assets_directory/" "$svn_checkout/assets/"
+	while IFS= read -r missing_path; do
+		[ -n "$missing_path" ] || continue
+		svn rm --force "$missing_path"
+	done < <(svn status "$svn_checkout/assets" | sed -n 's/^!.......//p')
 	svn add --force "$svn_checkout/assets" --parents
 fi
 

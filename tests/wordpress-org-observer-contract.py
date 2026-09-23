@@ -349,6 +349,9 @@ target="${@: -1}"
 case "$1" in
   checkout)
     mkdir -p "$target/trunk" "$target/assets"
+    if [[ "${MOCK_OLD_ASSET:-false}" == true ]]; then
+      printf '%s\n' 'obsolete artwork' > "$target/assets/old-icon.svg"
+    fi
     if [[ -n "${MOCK_TRUNK_VERSION:-}" ]]; then
       printf '* Version: %s\\n' "$MOCK_TRUNK_VERSION" > "$target/trunk/ran-ecwid-shop-teaser.php"
     fi ;;
@@ -376,7 +379,12 @@ case "$1" in
         fi
       fi
     else cp -a "$MOCK_PUBLISHED_DIR" "$target"; fi ;;
-  status|add) : ;;
+  status)
+    if [[ "$2" == */assets && "${MOCK_OLD_ASSET:-false}" == true ]]; then
+      printf '!       %s\n' "$2/old-icon.svg"
+    fi ;;
+  add) : ;;
+  rm) printf '%s\n' "$*" > "$MOCK_SVN_RM_ARGS" ;;
   commit) printf '%s\n' "${MOCK_COMMIT_OUTPUT:-Committed revision 371.}" ;;
   copy) printf '%s\n' "$*" > "$MOCK_COPY_ARGS" ;;
   *) exit 1 ;;
@@ -388,6 +396,9 @@ esac
         """
 source="${@: -2:1}"
 target="${@: -1}"
+if [[ "$*" == *'--delete'* ]]; then
+  find "$target" -mindepth 1 -maxdepth 1 -type f -delete
+fi
 cp -a "$source/." "$target"
 """,
     )
@@ -402,6 +413,7 @@ cp -a "$source/." "$target"
         MOCK_SVN_TAGS="1.3.1/",
         MOCK_TRUNK_VERSION="",
         MOCK_COPY_ARGS=str(tmp / "svn-copy-args"),
+        MOCK_SVN_RM_ARGS=str(tmp / "svn-rm-args"),
         WORDPRESS_ORG_USERNAME="fixture",
         WORDPRESS_ORG_PASSWORD="fixture",
     )
@@ -476,7 +488,9 @@ cp -a "$source/." "$target"
     contract["syncListingAssets"] = True
     write(deployment, json.dumps(contract))
     sync_command = command + " --sync-assets"
-    execute(sync_command, deploy_root, new_deploy)
+    synced = dict(new_deploy, MOCK_OLD_ASSET="true")
+    execute(sync_command, deploy_root, synced)
+    assert "old-icon.svg" in Path(synced["MOCK_SVN_RM_ARGS"]).read_text()
     asset_export_args = Path(new_deploy["MOCK_ASSET_EXPORT_ARGS"]).read_text()
     assert "https://plugins.svn.wordpress.org/ecwid-fixture/assets@371" in asset_export_args
     Path(new_deploy["MOCK_COPY_ARGS"]).unlink()
