@@ -81,9 +81,26 @@ with tempfile.TemporaryDirectory(prefix="ecwid-observer-contract-") as tmp:
         bindir / "gh",
         """
 if [[ "$1" == api ]]; then
+  if [[ "$*" == *"/actions/runs/${MOCK_PROVIDER_RUN_ID}/attempts/1/jobs"* ]]; then cat "$MOCK_PROVIDER_JOBS"; exit; fi
+  if [[ "$*" == *"/actions/runs/${MOCK_PROVIDER_RUN_ID}/attempts/1"* ]]; then cat "$MOCK_PROVIDER_RUN"; exit; fi
+  if [[ "$*" == *"/actions/jobs/902/logs"* ]]; then cat "$MOCK_PROVIDER_LOG"; exit; fi
+  if [[ "$*" == *"/actions/runs/${MOCK_QUALITY_RUN_ID}/attempts/1"* ]]; then cat "$MOCK_QUALITY_RUN"; exit; fi
+  if [[ "$*" == *"/actions/runs/${MOCK_QUALITY_RUN_ID}/artifacts"* ]]; then cat "$MOCK_QUALITY_ARTIFACTS"; exit; fi
   if [[ "$*" == *'/releases?per_page=100'* ]]; then cat "$MOCK_RELEASE_PAGES"; exit; fi
   if [[ "$*" == *'/git/ref/tags/'* ]]; then cat "$MOCK_TAG_REF"; exit; fi
   if [[ "$*" == *'/releases/tags/'* ]]; then cat "$MOCK_RELEASE_JSON"; exit; fi
+fi
+if [[ "$1" == run && "$2" == download ]]; then
+  shift 3
+  target=''
+  while (($#)); do
+    case "$1" in
+      --dir) target="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  cp "$MOCK_ASSET_DIR"/* "$target/"
+  exit
 fi
 if [[ "$1" == release && "$2" == download ]]; then
   shift 2
@@ -114,6 +131,13 @@ exit 1
         MOCK_TAG_REF=str(tmp / "tag.json"),
         MOCK_RELEASE_JSON=str(tmp / "release.json"),
         MOCK_ASSET_DIR=str(tmp / "assets"),
+        MOCK_PROVIDER_RUN_ID="901",
+        MOCK_QUALITY_RUN_ID="801",
+        MOCK_PROVIDER_RUN=str(tmp / "provider.json"),
+        MOCK_PROVIDER_JOBS=str(tmp / "provider-jobs.json"),
+        MOCK_PROVIDER_LOG=str(tmp / "provider.log"),
+        MOCK_QUALITY_RUN=str(tmp / "quality.json"),
+        MOCK_QUALITY_ARTIFACTS=str(tmp / "artifacts.json"),
     )
     write(Path(env["MOCK_TAG_REF"]), json.dumps({"object": {"type": "commit", "sha": SHA}}))
     admission = step("Resolve exact immutable release")
@@ -133,7 +157,7 @@ exit 1
         variant = dict(env, GITHUB_OUTPUT=str(output))
         execute(admission, tmp, variant, 0 if success else 1)
         if success:
-            expected = "deploy-required=true" if name == "stable" else "deploy-required=false"
+            expected = "release-found=true" if name == "stable" else "release-found=false"
             assert expected in output.read_text(), name
 
     write(Path(env["MOCK_RELEASE_PAGES"]), json.dumps([[release()]]))
@@ -177,6 +201,102 @@ exit 1
     check_assets("extra-asset", bad, 1)
     check_assets("prerelease-readback", dict(valid, prerelease=True), 1)
     check_assets("wrong-target", dict(valid, target_commitish="b" * 40), 1)
+
+    promotion = {
+        "schema": "ran-profile-b-promotion",
+        "schema_version": 1,
+        "repository": env["GITHUB_REPOSITORY"],
+        "quality_commit": SHA,
+        "source_commit": SHA,
+        "tag": TAG,
+        "assets": [
+            {"name": ARCHIVE, "sha256": digest(assets / ARCHIVE)},
+            {"name": checksum, "sha256": digest(assets / checksum)},
+        ],
+    }
+    write(assets / "ran-profile-b-promotion.json", json.dumps(promotion))
+    write(Path(env["MOCK_RELEASE_JSON"]), json.dumps(valid))
+    provider = {
+        "id": 901,
+        "run_attempt": 1,
+        "event": "workflow_run",
+        "path": ".github/workflows/release-please.yml",
+        "head_sha": SHA,
+        "head_branch": "main",
+        "head_repository": {"full_name": env["GITHUB_REPOSITORY"]},
+        "status": "completed",
+        "conclusion": "success",
+    }
+    quality = dict(
+        provider,
+        id=801,
+        event="push",
+        path=".github/workflows/quality.yml",
+    )
+    jobs = {
+        "jobs": [
+            {
+                "id": 902,
+                "conclusion": "success",
+                "steps": [
+                    {"name": "Download exact Quality artifact", "conclusion": "success"},
+                    {"name": "Verify and promote exact tested assets", "conclusion": "success"},
+                ],
+            }
+        ]
+    }
+    artifact_name = "ran-ecwid-shop-teaser-release-801-1"
+    write(Path(env["MOCK_PROVIDER_RUN"]), json.dumps(provider))
+    write(Path(env["MOCK_QUALITY_RUN"]), json.dumps(quality))
+    write(Path(env["MOCK_PROVIDER_JOBS"]), json.dumps(jobs))
+    write(
+        Path(env["MOCK_PROVIDER_LOG"]),
+        "2026-09-23T00:00:00Z ##[group]Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c\n"
+        f"2026-09-23T00:00:00Z   name: {artifact_name}\n"
+        "2026-09-23T00:00:00Z ##[endgroup]\n",
+    )
+    write(
+        Path(env["MOCK_QUALITY_ARTIFACTS"]),
+        json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "name": artifact_name,
+                        "expired": False,
+                        "workflow_run": {"id": 801},
+                    }
+                ]
+            }
+        ),
+    )
+
+    evidence_env = dict(
+        env,
+        GITHUB_OUTPUT=str(tmp / "promotion.output"),
+        RAN_PROVIDER_RUN_ID="901",
+        RAN_PROVIDER_ATTEMPT="1",
+        RAN_RELEASE_TAG=TAG,
+    )
+    helper = ROOT / "scripts/verify-wordpress-org-promotion.sh"
+    proof_dir = tmp / "promotion-proof"
+    proof_dir.mkdir()
+    execute(f"bash {helper}", proof_dir, evidence_env)
+    assert f"quality-run=801\nquality-attempt=1\nartifact-name={artifact_name}" in Path(
+        evidence_env["GITHUB_OUTPUT"]
+    ).read_text()
+    bad = json.loads(json.dumps(valid))
+    bad["assets"][0]["digest"] = "sha256:" + "b" * 64
+    write(Path(env["MOCK_RELEASE_JSON"]), json.dumps(bad))
+    denied = tmp / "promotion-bad-release"
+    denied.mkdir()
+    execute(f"bash {helper}", denied, dict(evidence_env, GITHUB_OUTPUT=str(tmp / "denied.output")), 1)
+    write(Path(env["MOCK_RELEASE_JSON"]), json.dumps(valid))
+    jobs["jobs"][0]["steps"][1]["conclusion"] = "skipped"
+    write(Path(env["MOCK_PROVIDER_JOBS"]), json.dumps(jobs))
+    denied = tmp / "promotion-bad-provider"
+    denied.mkdir()
+    execute(f"bash {helper}", denied, dict(evidence_env, GITHUB_OUTPUT=str(tmp / "denied-job.output")), 1)
+    write(Path(env["MOCK_PROVIDER_JOBS"]), json.dumps({"jobs": []}))
 
     condition = WORKFLOW.split("    contract:", 1)[1].split("        runs-on:", 1)[0]
     for guard in (
@@ -222,7 +342,10 @@ exit 1
 target="${@: -1}"
 case "$1" in
   checkout) mkdir -p "$target" ;;
-  ls) exit 0 ;;
+  ls)
+    if [[ "$2" == */tags ]]; then printf '%s\\n' "${MOCK_SVN_TAGS:-}"; exit 0; fi
+    if [[ "$2" == */tags/1.3.1 ]]; then [[ "$MOCK_EXISTING_TAG" == true ]]; exit; fi
+    exit 1 ;;
   export) cp -a "$MOCK_PUBLISHED_DIR" "$target" ;;
   *) exit 1 ;;
 esac
@@ -231,12 +354,21 @@ esac
     deploy_env = dict(
         env,
         MOCK_PUBLISHED_DIR=str(published),
+        MOCK_EXISTING_TAG="true",
+        MOCK_SVN_TAGS="1.3.1/",
         WORDPRESS_ORG_USERNAME="fixture",
         WORDPRESS_ORG_PASSWORD="fixture",
     )
     command = f"bash scripts/deploy-wordpress-org.sh {deploy_zip} {deploy_checksum}"
     execute(command, deploy_root, deploy_env)
     write(published / "ran-ecwid-shop-teaser.php", "different published bytes\n")
-    execute(command, deploy_root, deploy_env, 1)
+    assert "different bytes" in execute(command, deploy_root, deploy_env, 1).stderr
+    stale = execute(
+        command,
+        deploy_root,
+        dict(deploy_env, MOCK_EXISTING_TAG="false", MOCK_SVN_TAGS="1.4.0/"),
+        1,
+    )
+    assert "newer stable tag 1.4.0" in stale.stderr
 
-print("WordPress.org observer admission, exact assets, and SVN rerun fixtures passed.")
+print("WordPress.org observer, exact Profile B evidence, and SVN rollback fixtures passed.")

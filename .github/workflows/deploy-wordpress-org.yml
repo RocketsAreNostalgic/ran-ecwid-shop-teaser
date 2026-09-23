@@ -27,8 +27,9 @@ jobs:
         runs-on: blacksmith-2vcpu-ubuntu-2404
         permissions:
             contents: read
+            actions: read
         outputs:
-            deploy-required: ${{ steps.release.outputs.deploy-required }}
+            deploy-required: ${{ steps.promotion.outputs.deploy-required }}
             enabled: ${{ steps.contract.outputs.enabled }}
             sync-assets: ${{ steps.contract.outputs.sync-assets }}
             tag: ${{ steps.release.outputs.tag }}
@@ -50,16 +51,26 @@ jobs:
                   release_pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
                   matches="$(jq -cer --arg sha "$RAN_ADMITTED_SHA" 'add | [.[] | select(.target_commitish == $sha and .draft == false and .prerelease == false and .immutable == true)]' <<< "$release_pages")"
                   count="$(jq -er 'length' <<< "$matches")"
-                  if [[ "$count" == 0 ]]; then echo 'deploy-required=false' >> "$GITHUB_OUTPUT"; exit 0; fi
+                  if [[ "$count" == 0 ]]; then echo 'release-found=false' >> "$GITHUB_OUTPUT"; exit 0; fi
                   test "$count" == 1
                   tag="$(jq -er '.[0].tag_name' <<< "$matches")"
                   [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
                   tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}")"
                   jq -e --arg sha "$RAN_ADMITTED_SHA" '.object.type == "commit" and .object.sha == $sha' <<< "$tag_ref" >/dev/null
-                  printf 'deploy-required=true\ntag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+                  printf 'release-found=true\ntag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+            - name: Verify exact Profile B promotion evidence
+              id: promotion
+              if: ${{ steps.release.outputs.release-found == 'true' }}
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RAN_ADMITTED_SHA: ${{ github.event.workflow_run.head_sha }}
+                  RAN_PROVIDER_RUN_ID: ${{ github.event.workflow_run.id }}
+                  RAN_PROVIDER_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+                  RAN_RELEASE_TAG: ${{ steps.release.outputs.tag }}
+              run: bash scripts/verify-wordpress-org-promotion.sh
             - name: Read committed deployment contract
               id: contract
-              if: ${{ steps.release.outputs.deploy-required == 'true' }}
+              if: ${{ steps.promotion.outputs.deploy-required == 'true' }}
               shell: bash
               run: |
                   set -euo pipefail

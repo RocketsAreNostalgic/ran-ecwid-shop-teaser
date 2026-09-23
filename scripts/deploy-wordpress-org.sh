@@ -82,6 +82,13 @@ if svn ls "$svn_url/tags/$version" --non-interactive --no-auth-cache --username 
 	exit 1
 fi
 
+svn_tags=$(svn ls "$svn_url/tags" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD")
+latest_stable=$(printf '%s\n' "$svn_tags" | sed -nE 's#^([0-9]+\.[0-9]+\.[0-9]+)/$#\1#p' | sort -V | tail -n 1)
+if [[ -n "$latest_stable" && "$(printf '%s\n%s\n' "$version" "$latest_stable" | sort -V | tail -n 1)" != "$version" ]]; then
+	echo "WordPress.org already has newer stable tag $latest_stable; refusing to roll trunk back to $version." >&2
+	exit 1
+fi
+
 rsync -a --delete --exclude='.svn' "$workdir/release/$package_slug/" "$svn_checkout/trunk/"
 while IFS= read -r missing_path; do
 	[ -n "$missing_path" ] || continue

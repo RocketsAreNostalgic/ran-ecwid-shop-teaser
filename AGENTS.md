@@ -123,7 +123,9 @@ candidate marker state, mutable recovery, or publication scripts.
 Release Please PRs may be drafts; mark the exact qualified candidate ready
 before its protected-main merge. WordPress.org remains disabled in
 `wordpress-org/deployment.json` and is an optional downstream observer of a
-successful immutable GitHub release. The historical bootstrap boundary and
+successful immutable GitHub release. The observer binds the published assets
+to the triggering Profile B run's exact Quality artifact, and blocks stale
+versions before changing SVN trunk. The historical bootstrap boundary and
 initial manifest version are preserved as repository history; no historical
 replay or recovery path is part of this workflow.
 
