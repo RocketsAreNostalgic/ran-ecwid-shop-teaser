@@ -370,6 +370,10 @@ case "$1" in
         if [[ "${MOCK_COMMITTED_DIFF:-false}" == true ]]; then
           printf '%s\n' 'concurrent SVN change' > "$target/unqualified.php"
         fi
+        if [[ "${MOCK_COMMITTED_LINK:-false}" == true ]]; then
+          rm "$target/ran-ecwid-shop-teaser.php"
+          ln -s "$MOCK_QUALIFIED_DIR/ran-ecwid-shop-teaser.php" "$target/ran-ecwid-shop-teaser.php"
+        fi
       fi
     else cp -a "$MOCK_PUBLISHED_DIR" "$target"; fi ;;
   status|add) : ;;
@@ -450,6 +454,14 @@ cp -a "$source/." "$target"
         1,
     )
     assert "Committed SVN trunk differs from the qualified ZIP" in concurrent.stderr
+    assert not Path(new_deploy["MOCK_COPY_ARGS"]).exists()
+    symlink = execute(
+        command,
+        deploy_root,
+        dict(new_deploy, MOCK_COMMITTED_LINK="true"),
+        1,
+    )
+    assert "Committed SVN trunk differs from the qualified ZIP" in symlink.stderr
     assert not Path(new_deploy["MOCK_COPY_ARGS"]).exists()
     bad_commit = execute(
         command,

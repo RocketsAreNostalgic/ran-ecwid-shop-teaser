@@ -74,7 +74,7 @@ svn checkout --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNA
 
 if svn ls "$svn_url/tags/$version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" >/dev/null 2>&1; then
 	svn export --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/tags/$version" "$workdir/published"
-	if diff -qr "$workdir/published" "$workdir/release/$package_slug"; then
+	if diff -qr --no-dereference "$workdir/published" "$workdir/release/$package_slug"; then
 		echo "WordPress.org tag $version already contains the exact ZIP; deployment is complete."
 		exit 0
 	fi
@@ -139,7 +139,7 @@ committed_revision=$(printf '%s\n' "$commit_output" | sed -nE 's/^Committed revi
 	exit 1
 }
 svn export -r "$committed_revision" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/trunk@$committed_revision" "$workdir/committed"
-if ! diff -qr "$workdir/committed" "$workdir/release/$package_slug"; then
+if ! diff -qr --no-dereference "$workdir/committed" "$workdir/release/$package_slug"; then
 	echo 'Committed SVN trunk differs from the qualified ZIP; refusing to tag it.' >&2
 	exit 1
 fi
@@ -148,7 +148,7 @@ if [ "$sync_assets" = true ]; then
 	rsync -a --exclude='README.md' --exclude='drafts/' --exclude='.svn' \
 		"$root/$assets_directory/" "$workdir/expected-assets/"
 	svn export -r "$committed_revision" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/assets@$committed_revision" "$workdir/committed-assets"
-	if ! diff -qr "$workdir/committed-assets" "$workdir/expected-assets"; then
+	if ! diff -qr --no-dereference "$workdir/committed-assets" "$workdir/expected-assets"; then
 		echo 'Committed SVN listing assets differ from the approved repository artwork; refusing to tag.' >&2
 		exit 1
 	fi
