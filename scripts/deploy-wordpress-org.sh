@@ -1,106 +1,96 @@
 #!/usr/bin/env bash
-
+# Verify a release bundle and deploy it to WordPress.org SVN.
 set -euo pipefail
 
 export LC_ALL=C
 export TZ=UTC
 
-PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONFIG_PATH="${PLUGIN_ROOT}/wordpress-org/deployment.json"
-ARCHIVE_PATH="${1:?Usage: deploy-wordpress-org.sh <archive> <checksum> <manifest> <source-commit> [--allow-disabled] [--sync-assets]}"
-CHECKSUM_PATH="${2:?A SHA-256 file is required.}"
-MANIFEST_PATH="${3:?A release manifest is required.}"
-SOURCE_COMMIT="${4:?The proven source commit is required.}"
-shift 4
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+config="$root/wordpress-org/deployment.json"
+archive=${1:?Usage: deploy-wordpress-org.sh <archive> <checksum> [--sync-assets]}
+checksum=${2:?A SHA-256 file is required.}
+shift 2
 
-if [[ ! "${SOURCE_COMMIT}" =~ ^[0-9a-f]{40}$ ]]; then
-	echo "The proven source commit is not a full Git SHA." >&2
-	exit 1
-fi
-
-ALLOW_DISABLED=false
-SYNC_ASSETS=false
+sync_assets=false
 for argument in "$@"; do
-	case "${argument}" in
-		--allow-disabled) ALLOW_DISABLED=true ;;
-		--sync-assets) SYNC_ASSETS=true ;;
-		*) echo "Unknown deployment option: ${argument}" >&2; exit 1 ;;
+	case "$argument" in
+		--sync-assets) sync_assets=true ;;
+		*) echo "Unknown deployment option: $argument" >&2; exit 1 ;;
 	esac
 done
 
-ENABLED="$(jq -r '.enabled' "${CONFIG_PATH}")"
-if [[ "${ENABLED}" != true && "${ALLOW_DISABLED}" != true ]]; then
-	echo "Routine WordPress.org deployment is disabled in ${CONFIG_PATH}." >&2
+enabled=$(jq -r '.enabled' "$config")
+jq -e '.syncListingAssets | type == "boolean"' "$config" >/dev/null
+sync_listing_assets=$(jq -r '.syncListingAssets' "$config")
+if [ "$enabled" != true ]; then
+	echo "Routine WordPress.org deployment is disabled in $config." >&2
 	exit 1
 fi
 
-WORDPRESS_ORG_SLUG="$(jq -er '.wordpressOrgSlug | select(length > 0)' "${CONFIG_PATH}")"
-PACKAGE_SLUG="$(jq -er '.packageSlug' "${CONFIG_PATH}")"
-MAIN_PLUGIN_FILE="$(jq -er '.mainPluginFile' "${CONFIG_PATH}")"
-ASSETS_DIRECTORY="$(jq -er '.listingAssetsDirectory' "${CONFIG_PATH}")"
-VERSION="$(jq -er '.version' "${MANIFEST_PATH}")"
-TAG_NAME="$(jq -er '.tag' "${MANIFEST_PATH}")"
-ARCHIVE_SHA256="$(sha256sum "${ARCHIVE_PATH}" | cut -d ' ' -f 1)"
-ARCHIVE_FILES="$(unzip -Z1 "${ARCHIVE_PATH}" | LC_ALL=C sort | jq -Rsc 'split("\n") | map(select(length > 0))')"
-
-if [[ "${TAG_NAME}" != "v${VERSION}" ]]; then
-	echo "Release manifest tag and version do not agree." >&2
-	exit 1
+if [ "$sync_assets" = true ] && [ "$sync_listing_assets" != true ]; then
+    echo 'Listing asset synchronization is disabled by the committed contract.' >&2
+    exit 1
 fi
 
-if [[ "$(jq -er '.archive' "${MANIFEST_PATH}")" != "$(basename "${ARCHIVE_PATH}")" || \
-	"$(jq -er '.sha256' "${MANIFEST_PATH}")" != "${ARCHIVE_SHA256}" || \
-	"$(jq -cer '.files' "${MANIFEST_PATH}")" != "$(jq -c <<< "${ARCHIVE_FILES}")" || \
-	"$(jq -er '.commit' "${MANIFEST_PATH}")" != "${SOURCE_COMMIT}" || \
-	"$(jq -er '.packageSlug' "${MANIFEST_PATH}")" != "${PACKAGE_SLUG}" || \
-	"$(jq -er '.mainPluginFile' "${MANIFEST_PATH}")" != "${MAIN_PLUGIN_FILE}" || \
-	"$(jq -r '.wordpressOrgSlug' "${MANIFEST_PATH}")" != "${WORDPRESS_ORG_SLUG}" ]]; then
-	echo "Release manifest does not match the deployment contract." >&2
-	exit 1
-fi
+wordpress_org_slug=$(jq -er '.wordpressOrgSlug | select(length > 0)' "$config")
+package_slug=$(jq -er '.packageSlug' "$config")
+main_plugin_file=$(jq -er '.mainPluginFile' "$config")
+assets_directory=$(jq -er '.listingAssetsDirectory' "$config")
+version="${archive##*/}"
+version="${version#ran-ecwid-shop-teaser-}"
+version="${version%.zip}"
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
+tag_commit=$(git -C "$root" rev-parse HEAD)
+test "$(basename "$archive")" = "ran-ecwid-shop-teaser-${version}.zip"
+test "$(basename "$checksum")" = "$(basename "$archive").sha256"
+test "$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' "$root/$main_plugin_file")" = "$version"
+test "$(jq -er '."." | select(type == "string")' "$root/.release-please-manifest.json")" = "$version"
 
 (
-	cd "$(dirname "${ARCHIVE_PATH}")"
-	sha256sum --check "$(basename "${CHECKSUM_PATH}")"
+	cd "$(dirname "$archive")"
+	sha256sum --check "$(basename "$checksum")"
 )
 
-WORK_DIRECTORY="$(mktemp -d)"
+workdir=$(mktemp -d)
 cleanup() {
-	rm -rf "${WORK_DIRECTORY}"
+	rm -rf "$workdir"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-unzip -q "${ARCHIVE_PATH}" -d "${WORK_DIRECTORY}/release"
-if [[ ! -f "${WORK_DIRECTORY}/release/${PACKAGE_SLUG}/${MAIN_PLUGIN_FILE}" ]]; then
-	echo "The verified archive does not contain the configured main plugin file." >&2
+unzip -q "$archive" -d "$workdir/release"
+if [ ! -f "$workdir/release/$package_slug/$main_plugin_file" ]; then
+	echo 'The verified archive does not contain the configured main plugin file.' >&2
 	exit 1
 fi
 
 : "${WORDPRESS_ORG_USERNAME:?WORDPRESS_ORG_USERNAME is required.}"
 : "${WORDPRESS_ORG_PASSWORD:?WORDPRESS_ORG_PASSWORD is required.}"
 
-SVN_URL="https://plugins.svn.wordpress.org/${WORDPRESS_ORG_SLUG}"
-SVN_AUTH=(--non-interactive --no-auth-cache --username "${WORDPRESS_ORG_USERNAME}" --password "${WORDPRESS_ORG_PASSWORD}")
-svn checkout "${SVN_URL}" "${WORK_DIRECTORY}/svn" "${SVN_AUTH[@]}"
+svn_url="https://plugins.svn.wordpress.org/$wordpress_org_slug"
+svn_checkout="$workdir/svn"
+svn checkout --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url" "$svn_checkout"
 
-rsync -a --delete --exclude='.svn' "${WORK_DIRECTORY}/release/${PACKAGE_SLUG}/" "${WORK_DIRECTORY}/svn/trunk/"
+rsync -a --delete --exclude='.svn' "$workdir/release/$package_slug/" "$svn_checkout/trunk/"
 while IFS= read -r missing_path; do
-	[[ -n "${missing_path}" ]] || continue
-	svn rm --force "${missing_path}"
-done < <(svn status "${WORK_DIRECTORY}/svn/trunk" | sed -n 's/^!.......//p')
-svn add --force "${WORK_DIRECTORY}/svn/trunk" --parents
+	[ -n "$missing_path" ] || continue
+	svn rm --force "$missing_path"
+done < <(svn status "$svn_checkout/trunk" | sed -n 's/^!.......//p')
+svn add --force "$svn_checkout/trunk" --parents
 
-if [[ "${SYNC_ASSETS}" == true ]]; then
+if [ "$sync_assets" = true ]; then
 	rsync -a --delete --exclude='README.md' --exclude='drafts/' --exclude='.svn' \
-		"${PLUGIN_ROOT}/${ASSETS_DIRECTORY}/" "${WORK_DIRECTORY}/svn/assets/"
-	svn add --force "${WORK_DIRECTORY}/svn/assets" --parents
+		"$root/$assets_directory/" "$svn_checkout/assets/"
+	svn add --force "$svn_checkout/assets" --parents
 fi
 
-if svn ls "${SVN_URL}/tags/${VERSION}" "${SVN_AUTH[@]}" >/dev/null 2>&1; then
-	echo "WordPress.org tag ${VERSION} already exists; refusing to replace it." >&2
+if svn ls "$svn_url/tags/$version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" >/dev/null 2>&1; then
+	echo "WordPress.org tag $version already exists; refusing to replace it." >&2
 	exit 1
 fi
 
-svn status "${WORK_DIRECTORY}/svn"
-svn commit "${WORK_DIRECTORY}/svn" -m "Release ${VERSION}" "${SVN_AUTH[@]}"
-svn copy "${SVN_URL}/trunk" "${SVN_URL}/tags/${VERSION}" -m "Tag ${VERSION}" "${SVN_AUTH[@]}"
+svn status "$svn_checkout"
+svn commit "$svn_checkout" -m "Release $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"
+svn copy "$svn_url/trunk" "$svn_url/tags/$version" -m "Tag $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"

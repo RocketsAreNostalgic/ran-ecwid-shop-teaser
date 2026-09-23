@@ -21,10 +21,14 @@
 		"yoast/phpunit-polyfills": "^3.1"
 	},
 	"scripts": {
-		"lint": "phpcs --standard=phpcs.xml.dist",
-		"lint:compat": "@lint",
-		"test": "phpunit -c phpunit.xml.dist",
-		"check": "@lint"
+		"lint:syntax": "php tools/lint-php.php",
+		"standards": "phpcs --standard=phpcs.xml.dist",
+		"standards:fix": "phpcbf --standard=phpcs.xml.dist",
+		"test:integration": "phpunit -c phpunit.xml.dist",
+		"check": [
+			"@lint:syntax",
+			"@standards"
+		]
 	},
 	"config": {
 		"allow-plugins": {

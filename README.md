@@ -92,37 +92,25 @@ fallbacks must not reveal diagnostic details.
 
 ## Release lifecycle
 
-`Quality` is the single qualification authority for pull requests, trusted pushes
-to `main`, and the exact Release Please candidate branch. It runs the shared
-WordPress-plugin baseline, repository source/generated checks, the WordPress
-6.5 / PHP 8.0 compatibility floor, current WordPress / PHP 8.3 coverage,
-Plugin Check, and fresh installation of the exact distributable ZIP.
+`Quality` qualifies ordinary PRs, exact Release Please candidates, and pushes
+to protected `main`. It builds the deterministic ZIP and SHA-256 file, keeps
+the detailed archive manifest in CI evidence, checks generated block assets
+and POT, runs PHP standards and syntax checks, WordPress 6.5/PHP 8.0 and
+current WordPress/PHP 8.3 integration, Plugin Check, and installation of the
+same ZIP in fresh WordPress.
 
-The privileged `Release Please` publisher runs only after a successful
-same-repository `Quality` run for an exact `main` revision. It authenticates
-that triggering run, checks out the exact qualified commit without persisted
-credentials, and lets the pinned Release Please action open/update the release
-PR or prepare a merged release. Release Please PRs are created as drafts.
-The publisher validates the candidate from trusted `main`, then dispatches the
-trusted `main` Quality workflow with the exact candidate SHA as data. Do not
-use GitHub's **Update branch** action or manually merge `main` into the
-Release Please branch: that changes the candidate into a human-authored merge
-commit and Quality intentionally rejects it. Let an admitted publisher refresh
-the bot-generated candidate after `main` advances. After that exact trusted
-candidate run succeeds, the repository owner marks the draft release PR ready
-and normal-merges that unchanged head.
+After exact successful main Quality, the shared Profile B workflow runs Release
+Please, which owns version, changelog, release PR, tag, and draft GitHub
+Release. Profile B requires successful Quality on the exact release PR head
+before its protected-main merge. After that merge, the new main Quality
+produces an exact run/attempt artifact; Profile B verifies its promotion
+manifest and SHA-256 digests, uploads only the tested ZIP and checksum to the
+Release Please draft, publishes immutable, and reads back tag target and asset
+digests. Recovery requires a fresh qualified change and a new version/tag.
 
-When a release is cut, Release Please creates a draft GitHub Release and its
-exact tag. The publisher downloads the exact ZIP, SHA-256 file, and manifest
-produced by the triggering `Quality` run, proves that they belong to the
-qualified commit/tag, attaches and verifies them while the release is mutable,
-then publishes the draft and reads back the exact tag, release target, asset
-names, and SHA-256 digests. This remains safe if immutable releases are enabled.
-
-The unpublished `1.2.3` proposal was superseded and intentionally has no tag
-or GitHub Release. Published release history therefore skips `v1.2.3` and
-continues from the next generated version. WordPress.org publication remains
-separate and disabled.
+The unpublished `1.2.3` proposal was superseded and has no tag or release.
+WordPress.org publication is a separate optional downstream path and is
+disabled by the committed deployment contract.
 
 ## License
 

@@ -15,26 +15,24 @@ service-policy sign-off.
         contributor account, support ownership, and public repository links are
         final.
 -   [ ] Review `readme.txt` against the current WordPress.org readme validator,
-        including tags, Ecwid external-service disclosures, stable tag `1.1.1`,
-        and the declared `Tested up to` value.
--   [ ] Run the full local release gate from a clean worktree:
+        including tags, Ecwid external-service disclosures, the current stable
+        tag, and the declared `Tested up to` value.
+-   [ ] Run the local source and archive gates from a clean worktree:
 
           ```sh
           pnpm install --frozen-lockfile
           composer install --no-interaction
           pnpm check
-          composer lint
+          composer check
           pnpm check:generated
           pnpm release:verify
-          bash scripts/create-release-assets.sh v1.1.1
-          bash scripts/deploy-wordpress-org.sh dist/ran-ecwid-shop-teaser-1.1.1.zip \
-              dist/ran-ecwid-shop-teaser-1.1.1.zip.sha256 \
-              dist/ran-ecwid-shop-teaser-1.1.1.manifest.json --allow-disabled
           ```
 
--   [ ] Run the WordPress integration tests and fresh-ZIP install/plugin-check path
-        represented in `.github/workflows/quality.yml` without the database-backed
-        integration matrix.
+        WordPress integration tests run in the Quality matrix. Release assets
+        come from exact main Quality and Profile B. Do not use a local build
+        or manual dispatch to replace qualified release bytes.
+-   [ ] Confirm exact-head Quality passed WordPress integration, fresh-ZIP
+        installation, and Plugin Check on both supported matrix entries.
 -   [ ] Install the generated ZIP into a clean WordPress site with the official
         Ecwid plugin configured and verify editor preview, frontend rendering,
         cache fallback, unavailable-product state, keyboard focus, and diagnostic
@@ -46,9 +44,10 @@ service-policy sign-off.
         translation template, licence, and `readme.txt`. Source-only,
         development, test, vendor-cache, and WordPress.org asset-directory
         files must remain excluded.
--   [ ] Use the protected `wordpress-org` environment to deploy the validated
-        GitHub release to SVN `trunk` and tag `1.1.1`. Sync approved directory
-        artwork to `/assets` only through an explicitly approved first deployment.
+-   [ ] After directory approval, enable the reviewed committed deployment
+        contract and use the protected `wordpress-org` environment to consume
+        the exact immutable GitHub release. Enable `syncListingAssets` only
+        after artwork has been approved.
 
 ## Translation readiness
 
