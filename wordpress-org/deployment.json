@@ -7,5 +7,6 @@
 	"buildCommand": "php tools/build-release.php --output \"$ARCHIVE_PATH\"",
 	"verifyCommand": "php tools/build-release.php --check",
 	"archivePath": "dist/ran-ecwid-shop-teaser-{version}.zip",
-	"listingAssetsDirectory": "wordpress-org/assets"
+	"listingAssetsDirectory": "wordpress-org/assets",
+	"syncListingAssets": false
 }

@@ -27,9 +27,9 @@
 					"path": "languages/ran-ecwid-shop-teaser.pot"
 				}
 			],
-			"draft": true,
-			"force-tag-creation": true,
 			"draft-pull-request": true
 		}
-	}
+	},
+	"draft": true,
+	"force-tag-creation": true
 }

@@ -50,6 +50,7 @@ Install from the tracked locks; never use a setup script that deletes them.
 composer install --no-interaction
 pnpm install --frozen-lockfile
 pnpm check
+composer check
 pnpm check:generated
 pnpm test:php
 pnpm release:verify
@@ -74,16 +75,15 @@ This repository uses the RAN `wordpress-plugin` quality profile.
   Stylelint ancestry. This repository continues to own source selection,
   generated/vendor exclusions, applicability, and product-specific
   exceptions, including `@wordpress/no-unsafe-wp-apis`.
-- `composer check` is the deterministic PHP source-quality contract for the
-  shared baseline. WordPress integration PHPUnit remains owned by the
+- `composer check` runs syntax and PHPCS standards; `composer test:integration`
+  runs WordPress integration PHPUnit in the compatibility matrix. These are
+  the canonical Composer commands. WordPress integration PHPUnit remains owned by the
   compatibility matrix.
 - `pnpm check` remains the deterministic package-level quality contract.
-- Release-candidate identity/admission, archive identity, generated block/POT
-  drift, fresh-ZIP install/activation, compatibility coverage, and Plugin Check
-  remain repository-owned specialist gates. Canonical Release Please PRs must
-  retain the bot-owned, verified, direct-single-parent generated-head contract
-  before entering the same full Quality path; this is an admission precondition,
-  not a reduced release-candidate quality lane.
+- Archive identity, generated block/POT drift, fresh-ZIP install/activation,
+  compatibility coverage, and Plugin Check remain repository-owned specialist
+  gates. Shared Profile B admits the exact Release Please candidate and requires
+  its full Quality coverage.
 
 ## Git and commits
 
@@ -109,25 +109,25 @@ The build and quality workflows derive archive filenames from the plugin
 metadata and verify that version against the release tag. Keep packaging or
 WordPress.org deployment separate from Release Please.
 
-The privileged release publisher follows the Starter topology: consume an exact
-successful same-repository `Quality` run for `main`, run the pinned Release
-Please action from that qualified revision, validate the exact bot-owned
-release-PR head from trusted `main`, dispatch the trusted `main` Quality
-workflow with that candidate SHA as data, and read back the exact tag, release,
-and release assets after publication. Release Please PRs remain drafts until
-the owner confirms that exact trusted candidate Quality run succeeded, then
-marks the unchanged PR ready for a normal merge. Ecwid deliberately retains
-two bounded product-specific safeguards because of its prior release incident:
-exact bot-generated release-candidate admission, trusted-main validation of
-that candidate before dispatch, and an independent clean abstention when a
-merged PR changes trusted release-control surfaces.
-Repository rulesets enforce merge governance outside the publisher. Do not add
-live ruleset reconstruction, historical-release recovery state machines, or
-manual rebuild/publish authority to the normal release workflow.
+Shared Profile B consumes an exact successful same-repository `Quality` run
+for `main`, runs Release Please, qualifies the exact canonical release PR,
+retrieves the exact main run/attempt ZIP and checksum, verifies the promotion
+manifest and digests, then attaches those same bytes to Release Please's draft.
+It publishes and reads back the immutable tag, target, and two public assets.
+The repository retains the deterministic builder, archive manifest as CI
+evidence, generated block/POT gates, WordPress integration, Plugin Check, and
+fresh ZIP installation. Release Please owns versions, changelog, PR, tag, and
+GitHub Release lifecycle. Do not add repository-local merge classifiers,
+candidate marker state, mutable recovery, or publication scripts.
 
-Treat the existing initial-release preparation commit as the bootstrap
-boundary, preserve version `1.0.0` in the initial manifest, and review the
-first generated release PR before merging it.
+Release Please PRs may be drafts; mark the exact qualified candidate ready
+before its protected-main merge. WordPress.org remains disabled in
+`wordpress-org/deployment.json` and is an optional downstream observer of a
+successful immutable GitHub release. The observer binds the published assets
+to the triggering Profile B run's exact Quality artifact, and blocks stale
+versions before changing SVN trunk. The historical bootstrap boundary and
+initial manifest version are preserved as repository history; no historical
+replay or recovery path is part of this workflow.
 
 ## External AI agent prohibition
 

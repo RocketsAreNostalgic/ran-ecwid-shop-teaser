@@ -1,24 +1,10 @@
 name: Quality
-run-name: >-
-    ${{ github.event_name == 'workflow_dispatch' && inputs.release_pr != ''
-        && format('Quality candidate PR #{0} {1} @ trusted main {2}', inputs.release_pr, inputs.candidate_sha, github.sha)
-        || format('Quality {0} @ {1}', github.event_name, github.sha) }}
-
 on:
     pull_request:
     push:
         branches:
             - main
     workflow_dispatch:
-        inputs:
-            release_pr:
-                description: Exact open Release Please PR number to authenticate from trusted main
-                required: false
-                type: string
-            candidate_sha:
-                description: Exact validated Release Please candidate commit
-                required: false
-                type: string
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -26,7 +12,6 @@ concurrency:
 
 permissions:
     contents: read
-    pull-requests: read
 
 jobs:
     baseline:
@@ -56,93 +41,6 @@ jobs:
                   set -euo pipefail
                   test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
-            - name: Authenticate canonical Release Please candidate
-              id: admission
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RAN_DISPATCH_PR: ${{ inputs.release_pr }}
-                  RAN_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-                  RAN_PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-                  RAN_PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
-                  RAN_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-                  RAN_PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-                  RAN_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-                  RAN_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-              run: |
-                  set -euo pipefail
-                  pr_author="${RAN_PR_AUTHOR:-}"
-                  pr_base_ref="${RAN_PR_BASE_REF:-}"
-                  pr_base_sha="${RAN_PR_BASE_SHA:-}"
-                  pr_head_ref="${RAN_PR_HEAD_REF:-}"
-                  pr_head_repository="${RAN_PR_HEAD_REPOSITORY:-}"
-                  pr_head_sha="${RAN_PR_HEAD_SHA:-}"
-
-                  if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
-                      [[ "$RAN_DISPATCH_PR" =~ ^[1-9][0-9]*$ ]]
-                      [[ "${RAN_CANDIDATE_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
-                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
-                      test "$GITHUB_REF" = 'refs/heads/main'
-                      pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RAN_DISPATCH_PR}")"
-                      jq -e \
-                          --arg base "$GITHUB_SHA" \
-                          --arg bot 'github-actions[bot]' \
-                          --arg candidate "$RAN_CANDIDATE_SHA" \
-                          --arg head 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
-                          --arg repository "$GITHUB_REPOSITORY" \
-                          '.state == "open"
-                            and .draft == true
-                            and .user.login == $bot
-                            and .base.ref == "main"
-                            and .base.sha == $base
-                            and .head.ref == $head
-                            and .head.repo.full_name == $repository
-                            and .head.sha == $candidate' \
-                          <<< "$pr_json" >/dev/null
-                      pr_author="$(jq -er '.user.login' <<< "$pr_json")"
-                      pr_base_ref="$(jq -er '.base.ref' <<< "$pr_json")"
-                      pr_base_sha="$(jq -er '.base.sha' <<< "$pr_json")"
-                      pr_head_ref="$(jq -er '.head.ref' <<< "$pr_json")"
-                      pr_head_repository="$(jq -er '.head.repo.full_name' <<< "$pr_json")"
-                      pr_head_sha="$(jq -er '.head.sha' <<< "$pr_json")"
-                      test "$pr_head_sha" = "$RAN_CANDIDATE_SHA"
-                      git fetch --no-tags origin "+refs/heads/${pr_head_ref}:refs/remotes/origin/${pr_head_ref}"
-                      test "$(git rev-parse "refs/remotes/origin/${pr_head_ref}")" = "$pr_head_sha"
-                  fi
-
-                  canonical_release_pr=false
-                  if [[ "$pr_author" == 'github-actions[bot]' \
-                      && "$pr_base_ref" == main \
-                      && "$pr_head_ref" == 'release-please--branches--main--components--ran-ecwid-shop-teaser' \
-                      && "$pr_head_repository" == "$GITHUB_REPOSITORY" ]]; then
-                      canonical_release_pr=true
-                  fi
-
-                  if [[ "$canonical_release_pr" == true ]]; then
-                      test "$GITHUB_ACTOR" = 'github-actions[bot]'
-                      commit_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${pr_head_sha}")"
-                      jq -e \
-                          --arg base "$pr_base_sha" \
-                          --arg bot 'github-actions[bot]' \
-                          --arg head "$pr_head_sha" \
-                          --arg committer 'web-flow' \
-                          '.sha == $head
-                            and .author.login == $bot
-                            and .committer.login == $committer
-                            and .commit.verification.verified == true
-                            and .commit.verification.reason == "valid"
-                            and (.parents | length) == 1
-                            and .parents[0].sha == $base' \
-                          <<< "$commit_json" >/dev/null
-                      bash scripts/validate-release-candidate.sh "$pr_base_sha" "$pr_head_sha"
-                      git checkout --detach "$pr_head_sha"
-                  elif [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && -n "${RAN_DISPATCH_PR:-}" ]]; then
-                      echo '::error::The dispatched release candidate did not satisfy the canonical PR identity.'
-                      exit 1
-                  fi
-
-                  printf 'source-commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
             - name: Set up PHP
               uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
               with:
@@ -168,13 +66,15 @@ jobs:
                   composer install --no-interaction --prefer-dist --no-progress
                   pnpm check
                   pnpm check:generated
-                  composer lint
+                  composer check
+                  jq -e '.draft == true and .["force-tag-creation"] == true and .["skip-github-release"] != true' release-please-config.json >/dev/null
+                  grep -Fq 'release-profile-b.yml@e2fb19244a301a62f8fae2a80536898adf21fe22' .github/workflows/release-please.yml
 
             - name: Build exact release evidence
               id: release
               shell: bash
               env:
-                  RAN_EXPECTED_COMMIT: ${{ steps.admission.outputs.source-commit }}
+                  RAN_EXPECTED_COMMIT: ${{ github.sha }}
               run: |
                   set -euo pipefail
                   source_commit="$(git rev-parse HEAD)"
@@ -183,6 +83,11 @@ jobs:
 
                   version="$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' ran-ecwid-shop-teaser.php)"
                   test -n "$version"
+                  grep -Fq "define( 'RAN_ECWID_SHOP_TEASER_VERSION', '${version}' );" ran-ecwid-shop-teaser.php
+                  grep -Fxq "Stable tag: ${version}" readme.txt
+                  test "$(jq -er '.version' package.json)" = "$version"
+                  test "$(jq -er '."."' .release-please-manifest.json)" = "$version"
+                  grep -Fxq "\"Project-Id-Version: RAN Ecwid Shop Teaser ${version}\\n\"" languages/ran-ecwid-shop-teaser.pot
                   bash scripts/create-release-assets.sh "v${version}"
 
                   archive="dist/ran-ecwid-shop-teaser-${version}.zip"
@@ -219,6 +124,20 @@ jobs:
                           }
                       }' > dist/ran-ecwid-shop-teaser-ci-release.json
 
+                  archive_name="$(basename "$archive")"
+                  checksum_name="$(basename "$checksum")"
+                  checksum_sha256="$(sha256sum "$checksum" | awk '{ print $1 }')"
+                  jq -n \
+                      --arg repository "$GITHUB_REPOSITORY" \
+                      --arg commit "$source_commit" \
+                      --arg tag "v${version}" \
+                      --arg archive_name "$archive_name" \
+                      --arg archive_sha256 "$archive_sha256" \
+                      --arg checksum_name "$checksum_name" \
+                      --arg checksum_sha256 "$checksum_sha256" \
+                      '{schema:"ran-profile-b-promotion",schema_version:1,repository:$repository,quality_commit:$commit,source_commit:$commit,tag:$tag,assets:[{name:$archive_name,sha256:$archive_sha256},{name:$checksum_name,sha256:$checksum_sha256}]}' \
+                      > dist/ran-profile-b-promotion.json
+
                   jq -e \
                       --arg commit "$source_commit" \
                       --arg sha256 "$archive_sha256" \
@@ -241,7 +160,7 @@ jobs:
 
             - name: Name exact release evidence artifact
               id: artifact
-              run: printf 'name=ran-ecwid-shop-teaser-ci-release-%s\n' "$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+              run: printf 'name=ran-ecwid-shop-teaser-release-%s-%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
             - name: Upload exact release evidence
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -252,9 +171,9 @@ jobs:
                       dist/ran-ecwid-shop-teaser-${{ steps.release.outputs.version }}.zip.sha256
                       dist/ran-ecwid-shop-teaser-${{ steps.release.outputs.version }}.manifest.json
                       dist/ran-ecwid-shop-teaser-ci-release.json
+                      dist/ran-profile-b-promotion.json
                   if-no-files-found: error
-                  overwrite: true
-                  retention-days: 30
+                  retention-days: 7
 
     compatibility:
         name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}
@@ -336,7 +255,7 @@ jobs:
                   bash /tmp/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wordpress }} true
 
             - name: Run WordPress integration tests
-              run: composer test
+              run: composer test:integration
 
             - name: Install and activate tested ZIP in fresh WordPress
               run: |
