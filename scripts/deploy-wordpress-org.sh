@@ -138,4 +138,9 @@ committed_revision=$(printf '%s\n' "$commit_output" | sed -nE 's/^Committed revi
 	echo 'SVN did not report one committed revision; refusing to tag a moving trunk.' >&2
 	exit 1
 }
+svn export -r "$committed_revision" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/trunk" "$workdir/committed"
+if ! diff -qr "$workdir/committed" "$workdir/release/$package_slug"; then
+	echo 'Committed SVN trunk differs from the qualified ZIP; refusing to tag it.' >&2
+	exit 1
+fi
 svn copy -r "$committed_revision" "$svn_url/trunk" "$svn_url/tags/$version" -m "Tag $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"

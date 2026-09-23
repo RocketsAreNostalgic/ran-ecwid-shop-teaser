@@ -336,6 +336,8 @@ exit 1
     write(deploy_checksum, f"{digest(deploy_zip)}  {ARCHIVE}\n")
     published = tmp / "published"
     write(published / "ran-ecwid-shop-teaser.php", plugin)
+    qualified = tmp / "qualified"
+    write(qualified / "ran-ecwid-shop-teaser.php", plugin)
     mock_command(
         bindir / "svn",
         """
@@ -350,7 +352,14 @@ case "$1" in
     if [[ "$2" == */tags ]]; then printf '%s\\n' "${MOCK_SVN_TAGS:-}"; exit 0; fi
     if [[ "$2" == */tags/1.3.1 ]]; then [[ "$MOCK_EXISTING_TAG" == true ]]; exit; fi
     exit 1 ;;
-  export) cp -a "$MOCK_PUBLISHED_DIR" "$target" ;;
+  export)
+    if [[ "$2" == -r ]]; then
+      printf '%s\n' "$*" > "$MOCK_EXPORT_ARGS"
+      cp -a "$MOCK_QUALIFIED_DIR" "$target"
+      if [[ "${MOCK_COMMITTED_DIFF:-false}" == true ]]; then
+        printf '%s\n' 'concurrent SVN change' > "$target/unqualified.php"
+      fi
+    else cp -a "$MOCK_PUBLISHED_DIR" "$target"; fi ;;
   status|add) : ;;
   commit) printf '%s\n' "${MOCK_COMMIT_OUTPUT:-Committed revision 371.}" ;;
   copy) printf '%s\n' "$*" > "$MOCK_COPY_ARGS" ;;
@@ -369,6 +378,8 @@ cp -a "$source/." "$target"
     deploy_env = dict(
         env,
         MOCK_PUBLISHED_DIR=str(published),
+        MOCK_QUALIFIED_DIR=str(qualified),
+        MOCK_EXPORT_ARGS=str(tmp / "svn-export-args"),
         MOCK_EXISTING_TAG="true",
         MOCK_SVN_TAGS="1.3.1/",
         MOCK_TRUNK_VERSION="",
@@ -415,7 +426,17 @@ cp -a "$source/." "$target"
     execute(command, deploy_root, new_deploy)
     copy_args = Path(new_deploy["MOCK_COPY_ARGS"]).read_text()
     assert copy_args.startswith("copy -r 371 https://plugins.svn.wordpress.org/ecwid-fixture/trunk ")
+    export_args = Path(new_deploy["MOCK_EXPORT_ARGS"]).read_text()
+    assert export_args.startswith("export -r 371 ")
     Path(new_deploy["MOCK_COPY_ARGS"]).unlink()
+    concurrent = execute(
+        command,
+        deploy_root,
+        dict(new_deploy, MOCK_COMMITTED_DIFF="true"),
+        1,
+    )
+    assert "Committed SVN trunk differs from the qualified ZIP" in concurrent.stderr
+    assert not Path(new_deploy["MOCK_COPY_ARGS"]).exists()
     bad_commit = execute(
         command,
         deploy_root,
