@@ -89,6 +89,29 @@ if [[ -n "$latest_stable" && "$(printf '%s\n%s\n' "$version" "$latest_stable" | 
 	exit 1
 fi
 
+trunk_plugin="$svn_checkout/trunk/$main_plugin_file"
+if [[ -f "$trunk_plugin" ]]; then
+	trunk_version=$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' "$trunk_plugin")
+	[[ "$trunk_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+		echo 'Existing SVN trunk has an unrecognized plugin version.' >&2
+		exit 1
+	}
+	if [[ -f "$svn_checkout/trunk/readme.txt" ]]; then
+		trunk_stable=$(sed -n 's/^Stable tag:[[:space:]]*\([^[:space:]]*\).*$/\1/p' "$svn_checkout/trunk/readme.txt")
+		test "$trunk_stable" = "$trunk_version" || {
+			echo 'Existing SVN trunk plugin and readme versions disagree.' >&2
+			exit 1
+		}
+	fi
+	if [[ "$trunk_version" == "$version" || "$(printf '%s\n%s\n' "$version" "$trunk_version" | sort -V | tail -n 1)" != "$version" ]]; then
+		echo "WordPress.org trunk is already at $trunk_version; refusing to replace it with $version." >&2
+		exit 1
+	fi
+elif [[ -n "$(find "$svn_checkout/trunk" -mindepth 1 -maxdepth 1 ! -name .svn -print -quit)" ]]; then
+	echo 'Existing SVN trunk has no recognizable main plugin file.' >&2
+	exit 1
+fi
+
 rsync -a --delete --exclude='.svn' "$workdir/release/$package_slug/" "$svn_checkout/trunk/"
 while IFS= read -r missing_path; do
 	[ -n "$missing_path" ] || continue

@@ -341,7 +341,11 @@ exit 1
         """
 target="${@: -1}"
 case "$1" in
-  checkout) mkdir -p "$target" ;;
+  checkout)
+    mkdir -p "$target/trunk"
+    if [[ -n "${MOCK_TRUNK_VERSION:-}" ]]; then
+      printf '* Version: %s\\n' "$MOCK_TRUNK_VERSION" > "$target/trunk/ran-ecwid-shop-teaser.php"
+    fi ;;
   ls)
     if [[ "$2" == */tags ]]; then printf '%s\\n' "${MOCK_SVN_TAGS:-}"; exit 0; fi
     if [[ "$2" == */tags/1.3.1 ]]; then [[ "$MOCK_EXISTING_TAG" == true ]]; exit; fi
@@ -356,6 +360,7 @@ esac
         MOCK_PUBLISHED_DIR=str(published),
         MOCK_EXISTING_TAG="true",
         MOCK_SVN_TAGS="1.3.1/",
+        MOCK_TRUNK_VERSION="",
         WORDPRESS_ORG_USERNAME="fixture",
         WORDPRESS_ORG_PASSWORD="fixture",
     )
@@ -370,5 +375,29 @@ esac
         1,
     )
     assert "newer stable tag 1.4.0" in stale.stderr
+    partial = execute(
+        command,
+        deploy_root,
+        dict(
+            deploy_env,
+            MOCK_EXISTING_TAG="false",
+            MOCK_SVN_TAGS="",
+            MOCK_TRUNK_VERSION="1.4.0",
+        ),
+        1,
+    )
+    assert "trunk is already at 1.4.0" in partial.stderr
+    untagged = execute(
+        command,
+        deploy_root,
+        dict(
+            deploy_env,
+            MOCK_EXISTING_TAG="false",
+            MOCK_SVN_TAGS="",
+            MOCK_TRUNK_VERSION="1.3.1",
+        ),
+        1,
+    )
+    assert "trunk is already at 1.3.1" in untagged.stderr
 
 print("WordPress.org observer, exact Profile B evidence, and SVN rollback fixtures passed.")

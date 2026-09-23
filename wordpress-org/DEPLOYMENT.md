@@ -18,5 +18,7 @@ identity, tag target, GitHub asset digests, and ZIP checksum before SVN work.
 Listing artwork synchronization requires `syncListingAssets: true` in the
 committed contract. A rerun accepts an existing SVN tag only when its files
 match the exact ZIP; different bytes fail closed. A new SVN deployment also
-rejects a version older than an existing stable SVN tag before changing trunk.
+rejects an older version than either an existing stable SVN tag or the checked-out
+trunk, including a partial deployment whose tag copy failed. An untagged trunk
+at the same version also fails closed before changing bytes.
 Deployment never rebuilds or replaces GitHub release bytes.
