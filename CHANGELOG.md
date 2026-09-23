@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.3.0...v1.3.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **release:** migrate Ecwid to Profile B ([#33](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/issues/33)) ([821b0df](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/821b0df15e93a7e483082ebccbb2554e4045c84a))
+
 ## [1.3.0](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.2.3...v1.3.0) (2026-09-18)
 
 
