@@ -40,7 +40,6 @@ version="${archive##*/}"
 version="${version#ran-ecwid-shop-teaser-}"
 version="${version%.zip}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
-tag_commit=$(git -C "$root" rev-parse HEAD)
 test "$(basename "$archive")" = "ran-ecwid-shop-teaser-${version}.zip"
 test "$(basename "$checksum")" = "$(basename "$archive").sha256"
 test "$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' "$root/$main_plugin_file")" = "$version"
@@ -72,6 +71,16 @@ fi
 svn_url="https://plugins.svn.wordpress.org/$wordpress_org_slug"
 svn_checkout="$workdir/svn"
 svn checkout --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url" "$svn_checkout"
+
+if svn ls "$svn_url/tags/$version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" >/dev/null 2>&1; then
+	svn export --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/tags/$version" "$workdir/published"
+	if diff -qr "$workdir/published" "$workdir/release/$package_slug"; then
+		echo "WordPress.org tag $version already contains the exact ZIP; deployment is complete."
+		exit 0
+	fi
+	echo "WordPress.org tag $version exists with different bytes; refusing to replace it." >&2
+	exit 1
+fi
 
 rsync -a --delete --exclude='.svn' "$workdir/release/$package_slug/" "$svn_checkout/trunk/"
 while IFS= read -r missing_path; do

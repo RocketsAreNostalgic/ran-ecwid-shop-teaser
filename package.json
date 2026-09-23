@@ -50,9 +50,10 @@
 		"i18n:pot": "wp i18n make-pot . languages/ran-ecwid-shop-teaser.pot --exclude=node_modules,build,vendor,tests,dist && php tools/annotate-pot-release-version.php",
 		"archive": "php tools/build-release.php",
 		"archive:check": "php tools/build-release.php --check",
-		"check": "pnpm lint:pkg-json && pnpm lint:js && pnpm lint:css && pnpm format:check",
+		"check": "pnpm lint:pkg-json && pnpm lint:js && pnpm lint:css && pnpm format:check && pnpm test:wordpress-org-observer",
 		"check:generated": "pnpm build && pnpm i18n:pot && git diff --exit-code -- build/blocks languages/ran-ecwid-shop-teaser.pot",
 		"test:php": "composer test:integration",
+		"test:wordpress-org-observer": "python3 tests/wordpress-org-observer-contract.py",
 		"release:verify": "pnpm archive:check"
 	},
 	"volta": {

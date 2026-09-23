@@ -48,12 +48,12 @@ jobs:
                   set -euo pipefail
                   test "$(git rev-parse HEAD)" = "$RAN_ADMITTED_SHA"
                   release_pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
-                  matches="$(jq -cer --arg sha "$RAN_ADMITTED_SHA" 'add | [.[] | select(.target_commitish == $sha and .draft == false and .immutable == true)]' <<< "$release_pages")"
+                  matches="$(jq -cer --arg sha "$RAN_ADMITTED_SHA" 'add | [.[] | select(.target_commitish == $sha and .draft == false and .prerelease == false and .immutable == true)]' <<< "$release_pages")"
                   count="$(jq -er 'length' <<< "$matches")"
                   if [[ "$count" == 0 ]]; then echo 'deploy-required=false' >> "$GITHUB_OUTPUT"; exit 0; fi
                   test "$count" == 1
                   tag="$(jq -er '.[0].tag_name' <<< "$matches")"
-                  [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+                  [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
                   tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}")"
                   jq -e --arg sha "$RAN_ADMITTED_SHA" '.object.type == "commit" and .object.sha == $sha' <<< "$tag_ref" >/dev/null
                   printf 'deploy-required=true\ntag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
@@ -63,8 +63,8 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
-                  jq -e '(.enabled | type == "boolean") and ((.syncListingAssets // false) | type == "boolean")' wordpress-org/deployment.json >/dev/null
-                  printf 'enabled=%s\nsync-assets=%s\n' "$(jq -r '.enabled' wordpress-org/deployment.json)" "$(jq -r '.syncListingAssets // false' wordpress-org/deployment.json)" >> "$GITHUB_OUTPUT"
+                  jq -e '(.enabled | type == "boolean") and (.syncListingAssets | type == "boolean")' wordpress-org/deployment.json >/dev/null
+                  printf 'enabled=%s\nsync-assets=%s\n' "$(jq -r '.enabled' wordpress-org/deployment.json)" "$(jq -r '.syncListingAssets' wordpress-org/deployment.json)" >> "$GITHUB_OUTPUT"
 
     deploy:
         name: Deploy exact GitHub release to WordPress.org
@@ -100,7 +100,7 @@ jobs:
                   for asset in "$archive" "$checksum"; do gh release download "$TAG_NAME" --pattern "$asset" --dir dist --repo "$GITHUB_REPOSITORY"; done
                   test "$(find dist -maxdepth 1 -type f | wc -l)" -eq 2
                   release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}")"
-                  jq -e --arg commit "$ADMITTED_SHA" --arg tag "$TAG_NAME" '.tag_name == $tag and .target_commitish == $commit and .draft == false and .immutable == true' <<< "$release_json" >/dev/null
+                  jq -e --arg commit "$ADMITTED_SHA" --arg tag "$TAG_NAME" '.tag_name == $tag and .target_commitish == $commit and .draft == false and .prerelease == false and .immutable == true' <<< "$release_json" >/dev/null
                   expected="$(printf '%s\n' "$archive" "$checksum" | jq -Rsc 'split("\n") | map(select(length > 0)) | sort')"
                   test "$(jq -c '[.assets[].name] | sort' <<< "$release_json")" = "$expected"
                   for name in "$archive" "$checksum"; do

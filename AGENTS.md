@@ -50,6 +50,7 @@ Install from the tracked locks; never use a setup script that deletes them.
 composer install --no-interaction
 pnpm install --frozen-lockfile
 pnpm check
+composer check
 pnpm check:generated
 pnpm test:php
 pnpm release:verify

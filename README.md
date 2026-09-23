@@ -61,6 +61,7 @@ pnpm start
 pnpm build
 pnpm format:check
 pnpm check
+composer check
 ```
 
 Source files live in `blocks/`. Rebuild `build/blocks/` after block changes and
