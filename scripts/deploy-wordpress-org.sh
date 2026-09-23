@@ -138,9 +138,19 @@ committed_revision=$(printf '%s\n' "$commit_output" | sed -nE 's/^Committed revi
 	echo 'SVN did not report one committed revision; refusing to tag a moving trunk.' >&2
 	exit 1
 }
-svn export -r "$committed_revision" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/trunk" "$workdir/committed"
+svn export -r "$committed_revision" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/trunk@$committed_revision" "$workdir/committed"
 if ! diff -qr "$workdir/committed" "$workdir/release/$package_slug"; then
 	echo 'Committed SVN trunk differs from the qualified ZIP; refusing to tag it.' >&2
 	exit 1
 fi
-svn copy -r "$committed_revision" "$svn_url/trunk" "$svn_url/tags/$version" -m "Tag $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"
+if [ "$sync_assets" = true ]; then
+	mkdir "$workdir/expected-assets"
+	rsync -a --exclude='README.md' --exclude='drafts/' --exclude='.svn' \
+		"$root/$assets_directory/" "$workdir/expected-assets/"
+	svn export -r "$committed_revision" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD" "$svn_url/assets@$committed_revision" "$workdir/committed-assets"
+	if ! diff -qr "$workdir/committed-assets" "$workdir/expected-assets"; then
+		echo 'Committed SVN listing assets differ from the approved repository artwork; refusing to tag.' >&2
+		exit 1
+	fi
+fi
+svn copy -r "$committed_revision" "$svn_url/trunk@$committed_revision" "$svn_url/tags/$version" -m "Tag $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"

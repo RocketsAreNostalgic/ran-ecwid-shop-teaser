@@ -31,8 +31,9 @@ service-policy sign-off.
         WordPress integration tests run in the Quality matrix. Release assets
         come from exact main Quality and Profile B. Do not use a local build
         or manual dispatch to replace qualified release bytes.
--   [ ] Confirm exact-head Quality passed WordPress integration, fresh-ZIP
-        installation, and Plugin Check on both supported matrix entries.
+-   [ ] Confirm exact-head Quality passed WordPress integration and fresh-ZIP
+        installation on both supported matrix entries, plus Plugin Check on
+        the current-WordPress entry.
 -   [ ] Install the generated ZIP into a clean WordPress site with the official
         Ecwid plugin configured and verify editor preview, frontend rendering,
         cache fallback, unavailable-product state, keyboard focus, and diagnostic

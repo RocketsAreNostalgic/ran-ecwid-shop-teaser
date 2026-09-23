@@ -338,13 +338,17 @@ exit 1
     write(published / "ran-ecwid-shop-teaser.php", plugin)
     qualified = tmp / "qualified"
     write(qualified / "ran-ecwid-shop-teaser.php", plugin)
+    artwork = "qualified listing artwork\n"
+    write(deploy_root / "wordpress-org/assets/icon.svg", artwork)
+    qualified_assets = tmp / "qualified-assets"
+    write(qualified_assets / "icon.svg", artwork)
     mock_command(
         bindir / "svn",
         """
 target="${@: -1}"
 case "$1" in
   checkout)
-    mkdir -p "$target/trunk"
+    mkdir -p "$target/trunk" "$target/assets"
     if [[ -n "${MOCK_TRUNK_VERSION:-}" ]]; then
       printf '* Version: %s\\n' "$MOCK_TRUNK_VERSION" > "$target/trunk/ran-ecwid-shop-teaser.php"
     fi ;;
@@ -354,10 +358,18 @@ case "$1" in
     exit 1 ;;
   export)
     if [[ "$2" == -r ]]; then
-      printf '%s\n' "$*" > "$MOCK_EXPORT_ARGS"
-      cp -a "$MOCK_QUALIFIED_DIR" "$target"
-      if [[ "${MOCK_COMMITTED_DIFF:-false}" == true ]]; then
-        printf '%s\n' 'concurrent SVN change' > "$target/unqualified.php"
+      if [[ "$*" == *'/assets@371'* ]]; then
+        printf '%s\n' "$*" > "$MOCK_ASSET_EXPORT_ARGS"
+        cp -a "$MOCK_QUALIFIED_ASSETS" "$target"
+        if [[ "${MOCK_COMMITTED_ASSETS_DIFF:-false}" == true ]]; then
+          printf '%s\n' 'concurrent SVN artwork' > "$target/unqualified.svg"
+        fi
+      else
+        printf '%s\n' "$*" > "$MOCK_EXPORT_ARGS"
+        cp -a "$MOCK_QUALIFIED_DIR" "$target"
+        if [[ "${MOCK_COMMITTED_DIFF:-false}" == true ]]; then
+          printf '%s\n' 'concurrent SVN change' > "$target/unqualified.php"
+        fi
       fi
     else cp -a "$MOCK_PUBLISHED_DIR" "$target"; fi ;;
   status|add) : ;;
@@ -379,7 +391,9 @@ cp -a "$source/." "$target"
         env,
         MOCK_PUBLISHED_DIR=str(published),
         MOCK_QUALIFIED_DIR=str(qualified),
+        MOCK_QUALIFIED_ASSETS=str(qualified_assets),
         MOCK_EXPORT_ARGS=str(tmp / "svn-export-args"),
+        MOCK_ASSET_EXPORT_ARGS=str(tmp / "svn-asset-export-args"),
         MOCK_EXISTING_TAG="true",
         MOCK_SVN_TAGS="1.3.1/",
         MOCK_TRUNK_VERSION="",
@@ -425,9 +439,9 @@ cp -a "$source/." "$target"
     new_deploy = dict(deploy_env, MOCK_EXISTING_TAG="false", MOCK_SVN_TAGS="")
     execute(command, deploy_root, new_deploy)
     copy_args = Path(new_deploy["MOCK_COPY_ARGS"]).read_text()
-    assert copy_args.startswith("copy -r 371 https://plugins.svn.wordpress.org/ecwid-fixture/trunk ")
+    assert copy_args.startswith("copy -r 371 https://plugins.svn.wordpress.org/ecwid-fixture/trunk@371 ")
     export_args = Path(new_deploy["MOCK_EXPORT_ARGS"]).read_text()
-    assert export_args.startswith("export -r 371 ")
+    assert "https://plugins.svn.wordpress.org/ecwid-fixture/trunk@371" in export_args
     Path(new_deploy["MOCK_COPY_ARGS"]).unlink()
     concurrent = execute(
         command,
@@ -444,6 +458,23 @@ cp -a "$source/." "$target"
         1,
     )
     assert "did not report one committed revision" in bad_commit.stderr
+    assert not Path(new_deploy["MOCK_COPY_ARGS"]).exists()
+    deployment = deploy_root / "wordpress-org/deployment.json"
+    contract = json.loads(deployment.read_text())
+    contract["syncListingAssets"] = True
+    write(deployment, json.dumps(contract))
+    sync_command = command + " --sync-assets"
+    execute(sync_command, deploy_root, new_deploy)
+    asset_export_args = Path(new_deploy["MOCK_ASSET_EXPORT_ARGS"]).read_text()
+    assert "https://plugins.svn.wordpress.org/ecwid-fixture/assets@371" in asset_export_args
+    Path(new_deploy["MOCK_COPY_ARGS"]).unlink()
+    bad_artwork = execute(
+        sync_command,
+        deploy_root,
+        dict(new_deploy, MOCK_COMMITTED_ASSETS_DIFF="true"),
+        1,
+    )
+    assert "Committed SVN listing assets differ" in bad_artwork.stderr
     assert not Path(new_deploy["MOCK_COPY_ARGS"]).exists()
 
 print("WordPress.org observer, exact Profile B evidence, and SVN rollback fixtures passed.")
