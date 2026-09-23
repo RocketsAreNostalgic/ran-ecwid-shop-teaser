@@ -131,5 +131,11 @@ if svn ls "$svn_url/tags/$version" --non-interactive --no-auth-cache --username 
 fi
 
 svn status "$svn_checkout"
-svn commit "$svn_checkout" -m "Release $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"
-svn copy "$svn_url/trunk" "$svn_url/tags/$version" -m "Tag $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"
+commit_output=$(svn commit "$svn_checkout" -m "Release $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD")
+printf '%s\n' "$commit_output"
+committed_revision=$(printf '%s\n' "$commit_output" | sed -nE 's/^Committed revision ([0-9]+)\.$/\1/p')
+[[ "$committed_revision" =~ ^[0-9]+$ ]] || {
+	echo 'SVN did not report one committed revision; refusing to tag a moving trunk.' >&2
+	exit 1
+}
+svn copy -r "$committed_revision" "$svn_url/trunk" "$svn_url/tags/$version" -m "Tag $version" --non-interactive --no-auth-cache --username "$WORDPRESS_ORG_USERNAME" --password "$WORDPRESS_ORG_PASSWORD"

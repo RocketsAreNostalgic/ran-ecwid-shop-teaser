@@ -351,8 +351,19 @@ case "$1" in
     if [[ "$2" == */tags/1.3.1 ]]; then [[ "$MOCK_EXISTING_TAG" == true ]]; exit; fi
     exit 1 ;;
   export) cp -a "$MOCK_PUBLISHED_DIR" "$target" ;;
+  status|add) : ;;
+  commit) printf '%s\n' "${MOCK_COMMIT_OUTPUT:-Committed revision 371.}" ;;
+  copy) printf '%s\n' "$*" > "$MOCK_COPY_ARGS" ;;
   *) exit 1 ;;
 esac
+""",
+    )
+    mock_command(
+        bindir / "rsync",
+        """
+source="${@: -2:1}"
+target="${@: -1}"
+cp -a "$source/." "$target"
 """,
     )
     deploy_env = dict(
@@ -361,6 +372,7 @@ esac
         MOCK_EXISTING_TAG="true",
         MOCK_SVN_TAGS="1.3.1/",
         MOCK_TRUNK_VERSION="",
+        MOCK_COPY_ARGS=str(tmp / "svn-copy-args"),
         WORDPRESS_ORG_USERNAME="fixture",
         WORDPRESS_ORG_PASSWORD="fixture",
     )
@@ -399,5 +411,18 @@ esac
         1,
     )
     assert "trunk is already at 1.3.1" in untagged.stderr
+    new_deploy = dict(deploy_env, MOCK_EXISTING_TAG="false", MOCK_SVN_TAGS="")
+    execute(command, deploy_root, new_deploy)
+    copy_args = Path(new_deploy["MOCK_COPY_ARGS"]).read_text()
+    assert copy_args.startswith("copy -r 371 https://plugins.svn.wordpress.org/ecwid-fixture/trunk ")
+    Path(new_deploy["MOCK_COPY_ARGS"]).unlink()
+    bad_commit = execute(
+        command,
+        deploy_root,
+        dict(new_deploy, MOCK_COMMIT_OUTPUT="Committed an unknown revision."),
+        1,
+    )
+    assert "did not report one committed revision" in bad_commit.stderr
+    assert not Path(new_deploy["MOCK_COPY_ARGS"]).exists()
 
 print("WordPress.org observer, exact Profile B evidence, and SVN rollback fixtures passed.")
