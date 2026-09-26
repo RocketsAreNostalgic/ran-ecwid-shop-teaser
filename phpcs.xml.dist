@@ -4,6 +4,7 @@
 	<file>ran-ecwid-shop-teaser.php</file>
 	<file>includes</file>
 	<file>blocks</file>
+	<arg name="extensions" value="php" />
 	<!-- Build-tool asset metadata is checked by syntax and generated-file gates. -->
 	<exclude-pattern>*/index.asset.php</exclude-pattern>
 	<exclude-pattern>vendor/*</exclude-pattern>
