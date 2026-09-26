@@ -67,6 +67,9 @@ composer check
 Source files live in `blocks/`. Rebuild `build/blocks/` after block changes and
 commit the generated runtime assets with their source.
 
+See [QUALITY.md](QUALITY.md) for PHP source coverage, deterministic quality-tool
+tests and the separate WordPress integration lane.
+
 ## Agent workflow
 
 See [AGENTS.md](AGENTS.md) for the local Dex workflow, WordPress skills,

@@ -75,7 +75,7 @@ This repository uses the RAN `wordpress-plugin` quality profile.
   Stylelint ancestry. This repository continues to own source selection,
   generated/vendor exclusions, applicability, and product-specific
   exceptions, including `@wordpress/no-unsafe-wp-apis`.
-- `composer check` runs syntax and PHPCS standards; `composer test:integration`
+- `composer check` runs syntax, PHPCS standards and deterministic PHP quality-tool regression tests; `composer test:integration`
   runs WordPress integration PHPUnit in the compatibility matrix. These are
   the canonical Composer commands. WordPress integration PHPUnit remains owned by the
   compatibility matrix.
