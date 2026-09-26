@@ -27,8 +27,10 @@
 		"test:integration": "phpunit -c phpunit.xml.dist",
 		"check": [
 			"@lint:syntax",
-			"@standards"
-		]
+			"@standards",
+			"@test:quality"
+		],
+		"test:quality": "python3 tests/php-quality-contract.py"
 	},
 	"config": {
 		"allow-plugins": {
