@@ -18,7 +18,7 @@ elsewhere in the template and throughout the renderer.
 
 ## Commands and test environments
 
-`composer check` runs syntax, standards, `test:quality` and `analyze`. The latter needs
+`composer check` runs syntax, standards, `test:quality` and `analyze`. The `test:quality` regression suite needs
 Python 3 (already used by the package's observer contract tests), PHP and the
 locked Composer tools. It runs the real syntax helper on disposable copies,
 including malformed PHP, shell-sensitive filenames, dependency exclusions and
