@@ -8,7 +8,7 @@ Audit baseline: `274b1091deae7148c13a961414a8b74eaa288253` (issue #34).
 - Authored PHP block templates in `blocks/`: PHP syntax and the same PHPCS/PHPCBF rules.
 - `index.asset.php` build metadata: PHP syntax; generated metadata is verified by the build gate.
 - Runtime copies in `build/blocks/`: PHP syntax and required generated-file parity with source.
-- PHP development tools and tests: PHP syntax; broader PHPCS adoption needs its own measured slice.
+- PHP development tools and tests: PHP syntax and shared RAN PHPCS/PHPCBF rules.
 - `vendor/`, `node_modules/`, `.git/`: excluded from first-party syntax/standards selection.
 
 The block render template delegates to `EcwidProductGrid::render()`, which
@@ -60,8 +60,19 @@ outside the archive allowlist. Existing generated/ZIP/install/Plugin Check proof
 remains required. Fifteen individual wrong-return negative controls failed in the
 configured analysis and were restored; the deterministic archive check passes.
 
-## Remaining issue #34 scope
+## Standards acceptance
 
-Exact-head native CI/review must qualify this analysis candidate. Development-tool/
-test PHPCS coverage and the existing Ecwid camelCase property exception remain
-separate audit follow-ups; this analysis change does not broaden those waivers.
+PHPCS and PHPCBF now also select all maintained PHP tools and tests. Standalone
+CLI files narrowly exempt WordPress globals/filesystem/process-host rules because
+they do not load WordPress; test bootstrap permits only its pre-host stderr write.
+The former global camelCase property waiver is removed. Only the Ecwid response
+fields `inStock` and `defaultDisplayedPriceFormatted` retain line-scoped exceptions;
+these external field names are not RAN-owned PHP naming choices.
+
+The regression suite proves actual configuration selection in runtime, tooling
+and tests, rejecting newly introduced camelCase property access outside those two
+lines. It retains syntax failure controls, render escaping enforcement and two
+byte-stable config-driven fixer passes. PHP-CS-Fixer is absent. Integration-only
+PHPUnit remains required in the native WordPress matrix; no ordinary isolated
+unit suite is hidden behind that classification. Final CI/review and exact main
+acceptance are tracked in #34.

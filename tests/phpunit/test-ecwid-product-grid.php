@@ -23,7 +23,7 @@ class RAN_Ecwid_Shop_Teaser_Product_Grid_Test extends WP_UnitTestCase {
 				'url'       => 'https://example.com/product/',
 				'enabled'   => true,
 				'in_stock'  => false,
-			)
+			),
 		);
 	}
 
