@@ -9,6 +9,8 @@
  * @package RAN_Ecwid_Shop_Teaser
  */
 
+// phpcs:disable WordPress.WP.GlobalVariablesOverride, WordPress.WP.AlternativeFunctions -- Standalone CLI process; no WordPress globals, filesystem API or host lifecycle is loaded.
+
 $path     = dirname( __DIR__ ) . '/languages/ran-ecwid-shop-teaser.pot';
 $contents = file_get_contents( $path );
 

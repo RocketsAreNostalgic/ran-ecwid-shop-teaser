@@ -13,6 +13,7 @@ if ( ! $_tests_dir ) {
 }
 
 if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
+	// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Report missing test host before WordPress is loaded.
 	fwrite( STDERR, "WordPress test library not found. Set WP_TESTS_DIR before running PHPUnit.\n" );
 	exit( 1 );
 }

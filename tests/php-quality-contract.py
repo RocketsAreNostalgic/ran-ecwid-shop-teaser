@@ -65,8 +65,10 @@ class PHPQualityContract(unittest.TestCase):
     def test_render_template_is_checked_and_formatter_is_stable(self):
         for name in ("ran-ecwid-shop-teaser.php", "phpcs.xml.dist"):
             shutil.copy2(ROOT / name, self.root / name)
-        for name in ("includes", "blocks"):
+        for name in ("includes", "blocks", "tests"):
             shutil.copytree(ROOT / name, self.root / name)
+
+        shutil.copytree(ROOT / "tools", self.root / "tools", dirs_exist_ok=True)
 
         def standards(tool="phpcs", *extra):
             return self.run_tool([
@@ -87,6 +89,21 @@ class PHPQualityContract(unittest.TestCase):
             fixed = standards("phpcbf")
             self.assertEqual(0, fixed.returncode, fixed.stdout + fixed.stderr)
             self.assertEqual(original, snapshot())
+
+        # Tools and tests are first-party standards roots, and the Ecwid API
+        # field exception must not disable owned property enforcement elsewhere.
+        for relative in ("includes/Commerce/Ecwid/ProductRepository.php", "tools/lint-php.php", "tests/phpunit/test-ecwid-client.php"):
+            path = self.root / relative
+            original_bytes = path.read_bytes()
+            try:
+                path.write_bytes(original_bytes + b"\n$quality_probe->badProperty = 1;\n")
+                result = standards("phpcs", "--report=json")
+                self.assertNotEqual(0, result.returncode)
+                report = json.loads(result.stdout)
+                messages = report["files"][str(path)]["messages"]
+                self.assertTrue(any(message["source"] == "WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase" for message in messages), messages)
+            finally:
+                path.write_bytes(original_bytes)
 
         template = self.root / "blocks/ecwid-shop-teaser/render.php"
         template.write_text(template.read_text() + "\necho $attributes['unsafe'];\n")

@@ -342,9 +342,10 @@ final class ProductRepository {
 	 * @return array<string,mixed>
 	 */
 	private function normalize_product( $product, $query ) {
-		$id       = absint( $product->id ?? 0 );
-		$name     = isset( $product->name ) ? trim( (string) $product->name ) : '';
-		$enabled  = ! isset( $product->enabled ) || (bool) $product->enabled;
+		$id      = absint( $product->id ?? 0 );
+		$name    = isset( $product->name ) ? trim( (string) $product->name ) : '';
+		$enabled = ! isset( $product->enabled ) || (bool) $product->enabled;
+		// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- Ecwid API response field.
 		$in_stock = ! isset( $product->inStock ) || (bool) $product->inStock;
 
 		if ( 0 >= $id || '' === $name ) {
@@ -380,6 +381,7 @@ final class ProductRepository {
 		$card = array(
 			'id'        => $id,
 			'name'      => $name,
+			// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- Ecwid API response field.
 			'price'     => isset( $product->defaultDisplayedPriceFormatted ) ? (string) $product->defaultDisplayedPriceFormatted : '',
 			'image_url' => $image_url,
 			'image_alt' => $this->get_product_image_alt( $product, $name ),

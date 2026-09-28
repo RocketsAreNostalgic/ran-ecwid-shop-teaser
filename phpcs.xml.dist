@@ -4,6 +4,8 @@
 	<file>ran-ecwid-shop-teaser.php</file>
 	<file>includes</file>
 	<file>blocks</file>
+	<file>tools</file>
+	<file>tests</file>
 	<arg name="extensions" value="php" />
 	<!-- Build-tool asset metadata is checked by syntax and generated-file gates. -->
 	<exclude-pattern>*/index.asset.php</exclude-pattern>
@@ -16,8 +18,4 @@
 	<!-- Shared RAN WordPress/WPCS/PHPCompatibility ancestry. -->
 	<rule ref="RANWordPressPlugin" />
 
-	<!-- Repository-specific exception retained from the previous ruleset. -->
-	<rule ref="WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase">
-		<severity>0</severity>
-	</rule>
 </ruleset>

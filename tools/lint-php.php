@@ -5,6 +5,8 @@
  * @package RAN_Ecwid_Shop_Teaser
  */
 
+// phpcs:disable WordPress.WP.GlobalVariablesOverride, WordPress.WP.AlternativeFunctions, WordPress.PHP.DiscouragedPHPFunctions.system_calls_proc_open -- Standalone CLI process; no WordPress globals, filesystem API or host lifecycle is loaded.
+
 $root      = dirname( __DIR__ );
 $skip_dirs = array( '.git', 'node_modules', 'vendor' );
 $errors    = array();
