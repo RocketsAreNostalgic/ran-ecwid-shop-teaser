@@ -18,7 +18,9 @@
 		"phpcompatibility/phpcompatibility-wp": "3.0.0-alpha2",
 		"phpunit/phpunit": "^9.6",
 		"ran/coding-standards": "dev-main",
-		"yoast/phpunit-polyfills": "^3.1"
+		"yoast/phpunit-polyfills": "^3.1",
+		"phpstan/phpstan": "^2.1",
+		"php-stubs/wordpress-stubs": "~6.5.0"
 	},
 	"scripts": {
 		"lint:syntax": "php tools/lint-php.php",
@@ -28,9 +30,11 @@
 		"check": [
 			"@lint:syntax",
 			"@standards",
-			"@test:quality"
+			"@test:quality",
+			"@analyze"
 		],
-		"test:quality": "python3 tests/php-quality-contract.py"
+		"test:quality": "python3 tests/php-quality-contract.py",
+		"analyze": "@php vendor/bin/phpstan analyse --configuration=phpstan.neon.dist --no-progress --memory-limit=512M"
 	},
 	"config": {
 		"allow-plugins": {

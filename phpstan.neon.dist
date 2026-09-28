@@ -1,0 +1,15 @@
+parameters:
+    level: 5
+    phpVersion: 80000
+    treatPhpDocTypesAsCertain: false
+    paths:
+        - ran-ecwid-shop-teaser.php
+        - includes
+        - blocks
+        - build
+        - tools
+    scanFiles:
+        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+    bootstrapFiles:
+        - tests/phpstan/bootstrap.php
+    tmpDir: vendor/.cache/phpstan
