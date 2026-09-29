@@ -91,6 +91,7 @@ jobs:
                   bash scripts/create-release-assets.sh "v${version}"
 
                   archive="dist/ran-ecwid-shop-teaser-${version}.zip"
+                  python3 tests/phpstan-archive-coverage.py "$archive"
                   checksum="${archive}.sha256"
                   manifest="dist/ran-ecwid-shop-teaser-${version}.manifest.json"
                   archive_sha256="$(cut -d ' ' -f 1 "$checksum")"

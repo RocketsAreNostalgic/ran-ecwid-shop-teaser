@@ -60,6 +60,12 @@ outside the archive allowlist. Existing generated/ZIP/install/Plugin Check proof
 remains required. Fifteen individual wrong-return negative controls failed in the
 configured analysis and were restored; the deterministic archive check passes.
 
+The native Quality job also compares PHP files in the finished release ZIP with
+direct PHPStan paths. A disposable ZIP adds an uncovered root PHP file to prove
+that packaging changes cannot silently ship PHP outside analysis. Imported or
+excluded PHPStan paths fail closed for review; this check does not alter the
+archive or the repository's PHPStan level.
+
 ## Standards acceptance
 
 PHPCS and PHPCBF now also select all maintained PHP tools and tests. Standalone
