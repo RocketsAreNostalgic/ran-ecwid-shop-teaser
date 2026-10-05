@@ -22,7 +22,7 @@ jobs:
 
     quality:
         name: Quality and release artifact
-        runs-on: blacksmith-2vcpu-ubuntu-2404
+        runs-on: ubuntu-24.04
         outputs:
             artifact-name: ${{ steps.artifact.outputs.name }}
             archive-sha256: ${{ steps.release.outputs.archive-sha256 }}
@@ -179,7 +179,7 @@ jobs:
     compatibility:
         name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}
         needs: quality
-        runs-on: blacksmith-2vcpu-ubuntu-2404
+        runs-on: ubuntu-24.04
         strategy:
             fail-fast: false
             matrix:
