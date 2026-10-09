@@ -44,7 +44,11 @@ The project-scoped WordPress skills live in `.codex/skills/`. Read the relevant
 
 ## Development workflow
 
-Install from the tracked locks; never use a setup script that deletes them.
+Use Node 24.21.0 and pnpm 11.5.2. Install both workspace packages from the
+tracked lock; never use a setup script that deletes it. The private
+`tools/wordpress-build` package owns the unchanged WordPress Scripts compiler graph;
+root scripts own the shared lint baseline and run the compiler from the
+plugin root.
 
 ```sh
 composer install --no-interaction

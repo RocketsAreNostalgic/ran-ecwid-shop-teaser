@@ -1,0 +1,37 @@
+{
+	"name": "ran-ecwid-build-tools",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Isolated WordPress compiler dependencies.",
+	"author": "RAN",
+	"license": "GPL-2.0-or-later",
+	"keywords": [
+		"wordpress",
+		"blocks",
+		"gutenberg",
+		"ecwid"
+	],
+	"homepage": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser.git"
+	},
+	"bugs": {
+		"url": "https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser"
+	},
+	"engines": {
+		"node": ">=24.21.0 <25"
+	},
+	"devDependencies": {
+		"@types/node": "20.19.17",
+		"@wordpress/scripts": "30.27.0",
+		"@wordpress/stylelint-config": "23.42.0",
+		"eslint": "8.57.1",
+		"react": "18.3.1",
+		"react-dom": "18.3.1",
+		"stylelint": "16.26.1",
+		"stylelint-scss": "6.14.0",
+		"typescript": "5.9.3"
+	},
+	"packageManager": "pnpm@11.5.2"
+}

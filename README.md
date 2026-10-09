@@ -53,7 +53,8 @@ to visitors. Sites using this integration are responsible for reviewing
 
 ## Development
 
-Run commands from this plugin directory:
+Development uses the shared Node 24.21.0 minimum (Node 24 only), with
+pnpm 11.5.2. Run commands from this plugin directory:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -66,6 +67,14 @@ composer check
 
 Source files live in `blocks/`. Rebuild `build/blocks/` after block changes and
 commit the generated runtime assets with their source.
+
+The root package uses the shared WordPress ESLint, Prettier and CSS baseline.
+The private `tools/wordpress-build` workspace retains the published WordPress Scripts
+30.27.0 compiler with its compatible dependencies. This separates its bundled
+legacy lint dependencies from the checks we actually run, without replacing
+the WordPress compiler or changing its browser targets, dependency extraction,
+RTL output or block discovery. `pnpm install --frozen-lockfile` installs both
+packages from one tracked lock; build and start still run from the plugin root.
 
 See [QUALITY.md](QUALITY.md) for PHP source coverage, deterministic quality-tool
 tests and the separate WordPress integration lane.
