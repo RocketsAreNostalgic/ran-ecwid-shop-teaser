@@ -109,7 +109,7 @@ fallbacks must not reveal diagnostic details.
 to protected `main`. It builds the deterministic ZIP and SHA-256 file, keeps
 the detailed archive manifest in CI evidence, checks generated block assets
 and POT, runs PHP standards and syntax checks, WordPress 6.5/PHP 8.0 and
-current WordPress/PHP 8.3 integration, Plugin Check, and installation of the
+WordPress 7.1.3/PHP 8.5 integration, Plugin Check, and installation of the
 same ZIP in fresh WordPress.
 
 After exact successful main Quality, the shared Profile B workflow runs Release
