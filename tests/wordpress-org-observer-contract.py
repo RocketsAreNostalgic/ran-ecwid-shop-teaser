@@ -2,6 +2,7 @@
 """Exercise the actual WordPress.org observer steps with disposable API fixtures."""
 
 import hashlib
+import http.server
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+import threading
 import zipfile
 
 
@@ -17,6 +19,54 @@ WORKFLOW = (ROOT / ".github/workflows/deploy-wordpress-org.yml").read_text()
 SHA = "a" * 40
 TAG = "v1.3.1"
 ARCHIVE = "ran-ecwid-shop-teaser-1.3.1.zip"
+
+
+def verify_real_gh_escape_capture():
+    """Prove the actual gh raw-response guard and scoped file-only opt-out."""
+    binary = shutil.which("gh")
+    assert binary, "GitHub CLI is required for the observer transport contract."
+    payload = b"2026-10-16T00:00:00Z \x1b[36;1mRun shell\x1b[0m\r\n"
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *_arguments):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with tempfile.TemporaryDirectory(prefix="ecwid-real-gh-") as directory:
+            env = dict(
+                os.environ, GH_CONFIG_DIR=directory, GH_TOKEN="fixture-only",
+                GH_ENTERPRISE_TOKEN="fixture-only", NO_PROXY="127.0.0.1,localhost",
+            )
+            endpoint = f"http://127.0.0.1:{server.server_port}/logs"
+            for allow in (False, True):
+                output = Path(directory) / ("allowed.log" if allow else "denied.log")
+                with output.open("wb") as stream:
+                    result = subprocess.run(
+                        [binary, "api", endpoint] + (["--allow-escape-sequences"] if allow else []),
+                        env=env, stdout=stream, stderr=subprocess.PIPE, timeout=10,
+                    )
+                if allow:
+                    assert result.returncode == 0, result.stderr
+                    assert output.read_bytes() == payload
+                else:
+                    assert result.returncode != 0
+                    assert b"terminal escape sequences" in result.stderr
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+verify_real_gh_escape_capture()
 
 
 def step(name):
@@ -83,7 +133,13 @@ with tempfile.TemporaryDirectory(prefix="ecwid-observer-contract-") as tmp:
 if [[ "$1" == api ]]; then
   if [[ "$*" == *"/actions/runs/${MOCK_PROVIDER_RUN_ID}/attempts/1/jobs"* ]]; then cat "$MOCK_PROVIDER_JOBS"; exit; fi
   if [[ "$*" == *"/actions/runs/${MOCK_PROVIDER_RUN_ID}/attempts/1"* ]]; then cat "$MOCK_PROVIDER_RUN"; exit; fi
-  if [[ "$*" == *"/actions/jobs/902/logs"* ]]; then cat "$MOCK_PROVIDER_LOG"; exit; fi
+  if [[ "$*" == *"/actions/jobs/902/logs"* ]]; then
+    [[ "${MOCK_LOG_DOWNLOAD_FAIL:-false}" != true ]] || exit 1
+    [[ "$*" == *"--allow-escape-sequences"* && -f /dev/stdout ]] || {
+      echo 'the response contains terminal escape sequences' >&2; exit 1;
+    }
+    cat "$MOCK_PROVIDER_LOG"; exit
+  fi
   if [[ "$*" == *"/actions/runs/${MOCK_QUALITY_RUN_ID}/attempts/1"* ]]; then cat "$MOCK_QUALITY_RUN"; exit; fi
   if [[ "$*" == *"/actions/runs/${MOCK_QUALITY_RUN_ID}/artifacts"* ]]; then cat "$MOCK_QUALITY_ARTIFACTS"; exit; fi
   if [[ "$*" == *'/releases?per_page=100'* ]]; then cat "$MOCK_RELEASE_PAGES"; exit; fi
@@ -251,7 +307,8 @@ exit 1
     write(Path(env["MOCK_PROVIDER_JOBS"]), json.dumps(jobs))
     write(
         Path(env["MOCK_PROVIDER_LOG"]),
-        "2026-09-23T00:00:00Z ##[group]Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c\n"
+        "2026-09-23T00:00:00Z \x1b[36;1mUnrelated coloured shell output\x1b[0m\r\n"
+        "2026-09-23T00:00:00Z ##[group]Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c\r\n"
         f"2026-09-23T00:00:00Z   name: {artifact_name}\n"
         "2026-09-23T00:00:00Z ##[endgroup]\n",
     )
@@ -270,20 +327,36 @@ exit 1
         ),
     )
 
+    private_logs = tmp / "private-logs"
+    private_logs.mkdir(mode=0o700)
     evidence_env = dict(
         env,
         GITHUB_OUTPUT=str(tmp / "promotion.output"),
         RAN_PROVIDER_RUN_ID="901",
         RAN_PROVIDER_ATTEMPT="1",
         RAN_RELEASE_TAG=TAG,
+        TMPDIR=str(private_logs),
     )
     helper = ROOT / "scripts/verify-wordpress-org-promotion.sh"
     proof_dir = tmp / "promotion-proof"
     proof_dir.mkdir()
-    execute(f"bash {helper}", proof_dir, evidence_env)
+    captured = execute(f"bash {helper}", proof_dir, evidence_env)
+    assert "\x1b" not in captured.stdout + captured.stderr, "Raw terminal controls were rendered."
+    assert not list(private_logs.iterdir()), "Raw log capture was not removed."
     assert f"quality-run=801\nquality-attempt=1\nartifact-name={artifact_name}" in Path(
         evidence_env["GITHUB_OUTPUT"]
     ).read_text()
+    denied = tmp / "promotion-log-download-failure"
+    denied.mkdir()
+    execute(f"bash {helper}", denied, dict(evidence_env, MOCK_LOG_DOWNLOAD_FAIL="true"), 1)
+    assert not list(private_logs.iterdir()), "Failed retrieval left a raw log file."
+    original_log = Path(env["MOCK_PROVIDER_LOG"]).read_text()
+    write(Path(env["MOCK_PROVIDER_LOG"]), original_log + original_log)
+    denied = tmp / "promotion-ambiguous-log"
+    denied.mkdir()
+    execute(f"bash {helper}", denied, evidence_env, 1)
+    assert not list(private_logs.iterdir()), "Failed admission left a raw log file."
+    write(Path(env["MOCK_PROVIDER_LOG"]), original_log)
     bad = json.loads(json.dumps(valid))
     bad["assets"][0]["digest"] = "sha256:" + "b" * 64
     write(Path(env["MOCK_RELEASE_JSON"]), json.dumps(bad))

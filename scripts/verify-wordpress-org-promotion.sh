@@ -35,13 +35,18 @@ job_id="$(jq -r '.[0]' <<< "$job_ids")"
 
 # The pinned shared provider logs the exact run/attempt artifact supplied to
 # actions/download-artifact. Limit parsing to that action's single with: block.
-log="$(gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" | tr -d '\r')"
-block="$(awk '
+# gh guards ANSI-bearing raw responses even when stdout is redirected. Permit
+# bytes only for this private file capture; never render the raw log to a terminal.
+log_file="$(mktemp)"
+trap 'rm -f -- "$log_file"' EXIT
+gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" \
+  --allow-escape-sequences > "$log_file"
+block="$(tr -d '\r' < "$log_file" | awk '
   /##\[group\]Run actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c/ { inside = 1; count++; next }
   inside && /##\[endgroup\]/ { inside = 0; next }
   inside { print }
   END { if (count != 1) exit 1 }
-' <<< "$log")"
+')"
 artifact_identity="$(sed -nE 's/^.*[[:space:]]name: (ran-ecwid-shop-teaser-release-([1-9][0-9]*)-([1-9][0-9]*))$/\1 \2 \3/p' <<< "$block")"
 test "$(printf '%s\n' "$artifact_identity" | sed '/^$/d' | wc -l)" -eq 1
 read -r artifact_name quality_run_id quality_attempt <<< "$artifact_identity"

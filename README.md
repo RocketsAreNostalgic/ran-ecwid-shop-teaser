@@ -125,6 +125,14 @@ The unpublished `1.2.3` proposal was superseded and has no tag or release.
 WordPress.org publication is a separate optional downstream path and is
 disabled by the committed deployment contract.
 
+The read-only WordPress.org observer captures the exact promotion job's raw log
+in a private temporary file. Its escape-sequence opt-out applies only to that
+file download; the log is never printed and is removed on exit. Admission still
+requires one exact pinned download block and verifies the original Quality
+run/attempt, artifact, manifest and immutable release digests. Observer contract
+tests use the installed GitHub CLI against a local fixture to protect this raw
+transport boundary.
+
 ## License
 
 RAN Ecwid Shop Teaser is licensed under the [GNU General Public License v2.0
