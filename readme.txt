@@ -2,7 +2,7 @@
 Contributors: rocketsarenostalgic
 Tags: ecwid, products, shop, block, gutenberg
 Requires at least: 6.5
-Tested up to: 6.5
+Tested up to: 7.1
 Requires PHP: 8.0
 x-release-please-start-version
 Stable tag: 1.3.1
