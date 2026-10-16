@@ -30,6 +30,14 @@ class PHPQualityContract(unittest.TestCase):
     def lint(self):
         return self.run_tool(["php", str(self.root / "tools/lint-php.php")])
 
+    def test_release_builder_refuses_unavailable_cli_arguments(self):
+        result = self.run_tool([
+            "php", "-d", "register_argc_argv=0",
+            str(ROOT / "tools/build-release.php"), "--check",
+        ])
+        self.assertEqual(1, result.returncode)
+        self.assertIn("CLI arguments are unavailable", result.stderr)
+
     def write(self, name, content):
         path = self.root / name
         path.parent.mkdir(parents=True, exist_ok=True)

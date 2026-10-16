@@ -300,5 +300,10 @@ function ran_ecwid_release_main( $arguments ) {
 	}
 }
 
+if ( ! isset( $argv ) ) {
+	fwrite( STDERR, "CLI arguments are unavailable; enable register_argc_argv.\n" );
+	exit( 1 );
+}
+
 // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- This is a CLI process exit status.
 exit( ran_ecwid_release_main( $argv ) );
