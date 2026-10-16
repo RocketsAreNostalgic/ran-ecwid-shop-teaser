@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.3.1...v1.3.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* preserve readme headers and qualify current runtimes ([#43](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/issues/43)) ([4366a8a](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/commit/4366a8aad752c84fb43b687b8b5ed2a6ab62ba19))
+
 ## [1.3.1](https://github.com/RocketsAreNostalgic/ran-ecwid-shop-teaser/compare/v1.3.0...v1.3.1) (2026-09-23)
 
 
