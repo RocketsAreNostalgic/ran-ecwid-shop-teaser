@@ -130,8 +130,10 @@ in a private temporary file. Its escape-sequence opt-out applies only to that
 file download; the log is never printed and is removed on exit. Admission still
 requires one exact pinned download block and verifies the original Quality
 run/attempt, artifact, manifest and immutable release digests. Observer contract
-tests use the installed GitHub CLI against a local fixture to protect this raw
-transport boundary.
+tests always enforce this raw transport boundary with strict API fixtures. An
+additional real-CLI probe runs against a local HTTP fixture when an installed
+GitHub CLI advertises the escape guard; its absence or an older CLI does not
+prevent the ordinary package checks.
 
 ## License
 
