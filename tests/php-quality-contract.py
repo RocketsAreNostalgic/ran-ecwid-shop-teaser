@@ -32,7 +32,7 @@ class PHPQualityContract(unittest.TestCase):
 
     def test_release_builder_refuses_unavailable_cli_arguments(self):
         result = self.run_tool([
-            "php", "-d", "register_argc_argv=0",
+            "php", "-r", "$builder = $argv[1]; unset($argv); require $builder;",
             str(ROOT / "tools/build-release.php"), "--check",
         ])
         self.assertEqual(1, result.returncode)
