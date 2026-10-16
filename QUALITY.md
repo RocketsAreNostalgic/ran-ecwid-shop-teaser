@@ -30,13 +30,23 @@ The repository source is never mutated by these tests.
 
 Both existing PHPUnit files extend `WP_UnitTestCase`; their bootstrap loads
 the WordPress test library, plugin and database environment. They remain under
-`composer test:integration` in the required WordPress 6.5/PHP 8.0 and current
-WordPress/PHP 8.3 matrix. They are not ordinary database-free tests.
+`composer test:integration` in the required WordPress 6.5/PHP 8.0 and
+WordPress 7.1.3/PHP 8.5 matrix. They are not ordinary database-free tests.
+CI records the resolved PHP, Composer and WP-CLI versions and checks the fresh
+WordPress version before installing the same tested ZIP. The two paired targets
+do not establish every intermediate PHP version or cross-combination.
 
 PHPCS and PHPCBF use the same configuration. There is no PHP-CS-Fixer
 dependency, configuration or caller to retire. Frontend Prettier, ESLint and
 Stylelint have distinct responsibilities. Generated block/POT checks, archive
 verification, fresh-ZIP activation and Plugin Check remain required CI gates.
+
+Plugin Check's strict JSON report is validated separately from its command exit
+status: reported errors fail CI, while warnings remain visible. The installed
+parser also checks the actual readme and a bare-marker negative control. Release
+Please markers use colon-containing HTML comments so WordPress keeps parsing the
+following Stable tag and License headers; the generic updater still recognizes
+the same marker strings.
 
 ## Static analysis
 

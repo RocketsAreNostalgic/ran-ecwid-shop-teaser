@@ -2,11 +2,11 @@
 Contributors: rocketsarenostalgic
 Tags: ecwid, products, shop, block, gutenberg
 Requires at least: 6.5
-Tested up to: 6.5
+Tested up to: 7.1
 Requires PHP: 8.0
-x-release-please-start-version
+<!-- x-release-please-start-version: -->
 Stable tag: 1.3.1
-x-release-please-end
+<!-- x-release-please-end: -->
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
