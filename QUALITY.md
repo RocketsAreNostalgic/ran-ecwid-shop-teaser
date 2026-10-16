@@ -41,6 +41,13 @@ dependency, configuration or caller to retire. Frontend Prettier, ESLint and
 Stylelint have distinct responsibilities. Generated block/POT checks, archive
 verification, fresh-ZIP activation and Plugin Check remain required CI gates.
 
+Plugin Check's strict JSON report is validated separately from its command exit
+status: reported errors fail CI, while warnings remain visible. The installed
+parser also checks the actual readme and a bare-marker negative control. Release
+Please markers use colon-containing HTML comments so WordPress keeps parsing the
+following Stable tag and License headers; the generic updater still recognizes
+the same marker strings.
+
 ## Static analysis
 
 Blocking PHPStan level 5 targets PHP 8.0 with a 512 MB ceiling. Direct roots cover

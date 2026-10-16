@@ -281,7 +281,28 @@ jobs:
                   test "$(wp plugin get ran-ecwid-shop-teaser --field=version --path="$fresh_root")" = '${{ needs.quality.outputs.version }}'
                   if [[ '${{ matrix.plugin_check }}' == true ]]; then
                       wp plugin install plugin-check --path="$fresh_root" --activate
-                      wp plugin check ran-ecwid-shop-teaser --path="$fresh_root"
+                      wp eval '
+                          $readme = file_get_contents( WP_PLUGIN_DIR . "/ran-ecwid-shop-teaser/readme.txt" );
+                          $parsed = new WordPress\Plugin_Check\Lib\Readme\Parser( $readme );
+                          if ( RAN_ECWID_SHOP_TEASER_VERSION !== $parsed->stable_tag || "GPLv2 or later" !== $parsed->license ) {
+                              throw new RuntimeException( "Installed readme headers were not parsed." );
+                          }
+                          $broken = str_replace( array( "<!-- x-release-please-start-version: -->", "<!-- x-release-please-end: -->" ), array( "x-release-please-start-version", "x-release-please-end" ), $readme );
+                          $negative = new WordPress\Plugin_Check\Lib\Readme\Parser( $broken );
+                          if ( "" !== $negative->stable_tag || "" !== $negative->license ) {
+                              throw new RuntimeException( "The bare-marker negative control did not reproduce header loss." );
+                          }
+                          WP_CLI::success( "Real installed readme parser accepts annotations and rejects the bare-marker control." );
+                      ' --path="$fresh_root"
+                      report="$RUNNER_TEMP/ran-ecwid-plugin-check.json"
+                      if wp plugin check ran-ecwid-shop-teaser --path="$fresh_root" \
+                          --quiet --format=strict-json --fields=file,line,column,type,code,message,docs > "$report"; then
+                          if [[ ! -s "$report" ]]; then printf '[]\n' > "$report"; fi
+                      else
+                          cat "$report"
+                          exit 1
+                      fi
+                      python3 tools/verify-plugin-check.py "$report"
                   fi
 
     quality-gate:
